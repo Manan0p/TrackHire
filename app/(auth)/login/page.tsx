@@ -37,8 +37,6 @@ export default function LoginPage() {
     <div
       suppressHydrationWarning
       style={{
-        backgroundColor: "#F7F7F4",
-        minHeight: "100vh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
