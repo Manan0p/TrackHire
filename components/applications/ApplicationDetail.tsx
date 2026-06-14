@@ -1,29 +1,51 @@
 "use client";
 
-import { useState } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState, useEffect, useRef } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Skeleton } from "@/components/ui/skeleton";
-import { CompanyLogo } from "./CompanyLogo";
-import { StatusBadge } from "./StatusBadge";
-import { SourceBadge } from "./SourceBadge";
 import { EventTimeline } from "./EventTimeline";
 import { MatchScoreCard } from "@/components/ai/MatchScoreCard";
 import { PrepQuestionsPanel } from "@/components/ai/PrepQuestionsPanel";
 import { FollowUpDrafter } from "@/components/ai/FollowUpDrafter";
+import { StatusBadge } from "./StatusBadge";
+import { SourceBadge } from "./SourceBadge";
 import { ApplicationWithRelations, EventRecord, STATUS_LABELS } from "@/types";
 import { AppStatus } from "@prisma/client";
 import { formatDate, formatSalary } from "@/lib/utils";
-import { ExternalLink, Mail, Link2, User, DollarSign, Tag, RefreshCw } from "lucide-react";
+import { X, ExternalLink, Mail, Link2, User, Tag, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+const AVATAR_COLORS: [string, string][] = [
+  ["#1E3A5F", "#3B82F6"], ["#1C3A2B", "#10B981"], ["#3B1F2B", "#F43F5E"],
+  ["#2D1B4E", "#8B5CF6"], ["#3B2A0E", "#F59E0B"], ["#1A3040", "#0EA5E9"],
+];
+
+function CompanyAvatar({ company, size = 64 }: { company: string; size?: number }) {
+  const idx = company.charCodeAt(0) % AVATAR_COLORS.length;
+  const [bg, text] = AVATAR_COLORS[idx];
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: 10, background: bg,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      flexShrink: 0, fontWeight: 800, color: text,
+      fontSize: Math.round(size * 0.38), letterSpacing: "-0.02em",
+    }}>
+      {company.slice(0, 2).toUpperCase()}
+    </div>
+  );
+}
 
 const ALL_STATUSES: AppStatus[] = [
   "WISHLIST", "APPLIED", "OA", "PHONE", "TECHNICAL",
   "FINAL", "OFFER", "REJECTED", "GHOSTED", "WITHDRAWN",
 ];
+
+const TABS = ["Timeline", "Recruiter", "Notes", "AI Insights"] as const;
+type Tab = typeof TABS[number];
+
+// ── Props ────────────────────────────────────────────────────────────────────
 
 interface ApplicationDetailProps {
   application: ApplicationWithRelations | null;
@@ -32,10 +54,29 @@ interface ApplicationDetailProps {
   onUpdate: (updated: ApplicationWithRelations) => void;
 }
 
+// ── Component ────────────────────────────────────────────────────────────────
+
 export function ApplicationDetail({ application, open, onClose, onUpdate }: ApplicationDetailProps) {
   const [updating, setUpdating] = useState(false);
   const [localApp, setLocalApp] = useState<ApplicationWithRelations | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>("Timeline");
+  const drawerRef = useRef<HTMLDivElement>(null);
+
   const current = localApp || application;
+
+  // Reset local state when application changes
+  useEffect(() => {
+    setLocalApp(null);
+    setActiveTab("Timeline");
+  }, [application?.id]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open, onClose]);
 
   const handleStatusChange = async (status: AppStatus) => {
     if (!current) return;
@@ -49,7 +90,7 @@ export function ApplicationDetail({ application, open, onClose, onUpdate }: Appl
       const updated = await res.json();
       setLocalApp(updated);
       onUpdate(updated);
-      toast.success(`Status updated to ${STATUS_LABELS[status]}`);
+      toast.success(`Status → ${STATUS_LABELS[status]}`);
     } catch {
       toast.error("Failed to update status");
     } finally {
@@ -57,25 +98,9 @@ export function ApplicationDetail({ application, open, onClose, onUpdate }: Appl
     }
   };
 
-  const handleNotesUpdate = async (notes: string) => {
-    if (!current) return;
-    try {
-      const res = await fetch(`/api/applications/${current.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes }),
-      });
-      const updated = await res.json();
-      setLocalApp(updated);
-      onUpdate(updated);
-    } catch {
-      toast.error("Failed to save notes");
-    }
-  };
-
   const handleEventAdded = (event: EventRecord) => {
     if (!current) return;
-    const updated = { ...current, events: [...current.events, event] };
+    const updated = { ...current, events: [...(current.events ?? []), event] };
     setLocalApp(updated as ApplicationWithRelations);
     onUpdate(updated as ApplicationWithRelations);
   };
@@ -84,53 +109,80 @@ export function ApplicationDetail({ application, open, onClose, onUpdate }: Appl
     if (!current) return;
     const updated = {
       ...current,
-      events: current.events.map((e) => (e.id === event.id ? event : e)),
+      events: (current.events ?? []).map((e) => (e.id === event.id ? event : e)),
     };
     setLocalApp(updated as ApplicationWithRelations);
   };
 
   return (
-    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-full sm:w-[580px] sm:max-w-[580px] p-0 overflow-y-auto">
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed", inset: 0, zIndex: 40,
+          background: "rgba(0,0,0,0.25)",
+          backdropFilter: "blur(2px)",
+          opacity: open ? 1 : 0,
+          pointerEvents: open ? "auto" : "none",
+          transition: "opacity 0.2s ease",
+        }}
+      />
+
+      {/* Drawer */}
+      <div
+        ref={drawerRef}
+        style={{
+          position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 50,
+          width: 560,
+          background: "#ffffff",
+          boxShadow: "-8px 0 32px rgba(0,0,0,0.12)",
+          display: "flex", flexDirection: "column",
+          transform: open ? "translateX(0)" : "translateX(100%)",
+          transition: "transform 0.25s cubic-bezier(0.4,0,0.2,1)",
+          overflow: "hidden",
+        }}
+      >
         {!current ? (
-          <div className="p-6 space-y-4">
-            <Skeleton className="h-8 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
+          <div style={{ padding: 32, display: "flex", flexDirection: "column", gap: 12 }}>
+            {[160, 100, 80].map((w, i) => (
+              <div key={i} style={{ height: 14, width: w, borderRadius: 4, background: "#F3F4F6", animation: "pulse 1.5s ease-in-out infinite" }} />
+            ))}
           </div>
         ) : (
           <>
-            {/* Header */}
+            {/* ── Header ──────────────────────────────────────────────── */}
             <div style={{
-              position: "sticky", top: 0, zIndex: 10,
-              background: "#ffffff", borderBottom: "1px solid #E5E7EB",
-              padding: "20px 24px",
+              padding: "20px 24px 16px",
+              borderBottom: "1px solid #F3F4F6",
+              flexShrink: 0,
             }}>
-              {/* Top row: Logo + role + close */}
+              {/* Row 1: avatar + role/company + close */}
               <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-                <CompanyLogo company={current.company} size={44} />
+                <CompanyAvatar company={current.company} size={56} />
+
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <h2 style={{ fontSize: 17, fontWeight: 700, color: "#111827", lineHeight: 1.2, margin: 0 }}>
+                  <h2 style={{ fontSize: 20, fontWeight: 700, color: "#111827", lineHeight: 1.2, margin: 0 }}>
                     {current.role}
                   </h2>
-                  <p style={{ fontSize: 13, color: "#6B7280", marginTop: 3 }}>
+                  <p style={{ fontSize: 13, color: "#6B7280", margin: "4px 0 0" }}>
                     {current.company}
+                    {(current.salaryMin || current.salaryMax) && (
+                      <> · <span style={{ color: "#9CA3AF" }}>{formatSalary(current.salaryMin, current.salaryMax, current.currency)}</span></>
+                    )}
                   </p>
+
+                  {/* Row 2: status pill + source + job link */}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                    {/* Status dropdown */}
-                    <Select
-                      value={current.status}
-                      onValueChange={(v) => handleStatusChange(v as AppStatus)}
-                      disabled={updating}
-                    >
+                    <Select value={current.status} onValueChange={(v) => handleStatusChange(v as AppStatus)} disabled={updating}>
                       <SelectTrigger style={{
-                        height: 28, fontSize: 12, fontWeight: 600,
-                        border: "1px solid #E5E7EB", borderRadius: 6,
-                        padding: "0 8px", background: "#F0F9F6", color: "#005F4B",
-                        width: "auto", minWidth: 110,
+                        height: 26, fontSize: 11.5, fontWeight: 600,
+                        border: "1px solid #E5E7EB", borderRadius: 20,
+                        padding: "0 10px", background: "#F0FDF4", color: "#005F4B",
+                        width: "auto", minWidth: 100,
+                        display: "flex", alignItems: "center", gap: 4,
                       }}>
-                        <SelectValue>
-                          <StatusBadge status={current.status} size="sm" />
-                        </SelectValue>
+                        <SelectValue><StatusBadge status={current.status} size="sm" /></SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {ALL_STATUSES.map((s) => (
@@ -140,232 +192,229 @@ export function ApplicationDetail({ application, open, onClose, onUpdate }: Appl
                         ))}
                       </SelectContent>
                     </Select>
-                    {/* Source badge */}
+
                     <SourceBadge source={current.source} />
-                    {/* Job link */}
+
                     {current.jobUrl && (
                       <a
                         href={current.jobUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ fontSize: 12, color: "#005F4B", display: "flex", alignItems: "center", gap: 4, textDecoration: "none" }}
+                        style={{ fontSize: 11.5, color: "#005F4B", display: "flex", alignItems: "center", gap: 4, textDecoration: "none" }}
                         onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.textDecoration = "underline")}
                         onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.textDecoration = "none")}
                       >
                         <ExternalLink size={12} />
-                        View Job Posting
+                        View Job ↗
                       </a>
                     )}
                   </div>
                 </div>
+
+                {/* Close button */}
+                <button
+                  onClick={onClose}
+                  style={{
+                    width: 32, height: 32, borderRadius: 8, border: "none",
+                    background: "transparent", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "#6B7280", flexShrink: 0, transition: "background 0.12s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#F3F4F6")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  <X size={18} />
+                </button>
               </div>
 
-              {/* Quick stats */}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 14, fontSize: 11, color: "#9CA3AF" }}>
-                {current.appliedAt && (
-                  <span>Applied {formatDate(current.appliedAt)}</span>
-                )}
-                {(current.salaryMin || current.salaryMax) && (
-                  <span>{formatSalary(current.salaryMin, current.salaryMax, current.currency)}</span>
-                )}
-                {(current.tags?.length ?? 0) > 0 && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <Tag size={10} />
-                    {current.tags?.slice(0, 3).join(", ")}
-                  </div>
-                )}
-              </div>
+              {/* Applied date + tags */}
+              {(current.appliedAt || (current.tags?.length ?? 0) > 0) && (
+                <div style={{ display: "flex", gap: 12, marginTop: 10, fontSize: 11, color: "#9CA3AF" }}>
+                  {current.appliedAt && <span>Applied {formatDate(current.appliedAt)}</span>}
+                  {(current.tags?.length ?? 0) > 0 && (
+                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <Tag size={10} />
+                      {current.tags?.slice(0, 3).join(", ")}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Tabs */}
-            <div className="px-6 py-4">
-              <Tabs defaultValue="timeline">
-                <TabsList className="w-full mb-4 bg-[var(--surface-container-low)]">
-                  <TabsTrigger value="timeline" className="flex-1 text-[13px]">Timeline</TabsTrigger>
-                  <TabsTrigger value="recruiter" className="flex-1 text-[13px]">Recruiter</TabsTrigger>
-                  <TabsTrigger value="notes" className="flex-1 text-[13px]">Notes</TabsTrigger>
-                  <TabsTrigger value="ai" className="flex-1 text-[13px] gap-1 flex items-center text-[var(--primary)] font-semibold">
-                    <span>AI Insights</span>
-                    <span className="text-[12px]">✦</span>
-                  </TabsTrigger>
-                </TabsList>
+            {/* ── Tabs ────────────────────────────────────────────────── */}
+            <div style={{ borderBottom: "1px solid #F3F4F6", display: "flex", padding: "0 24px", flexShrink: 0 }}>
+              {TABS.map((tab) => {
+                const isActive = activeTab === tab;
+                const isAI = tab === "AI Insights";
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    style={{
+                      padding: "10px 14px",
+                      fontSize: 13,
+                      fontWeight: isActive ? 600 : 400,
+                      color: isActive ? "#111827" : "#6B7280",
+                      background: "none",
+                      border: "none",
+                      borderBottom: isActive ? "2px solid #111827" : "2px solid transparent",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                      transition: "color 0.12s, border-color 0.12s",
+                      ...(isAI && { color: isActive ? "#005F4B" : "#6B7280" }),
+                    }}
+                  >
+                    {isAI ? "✦ AI Insights" : tab}
+                  </button>
+                );
+              })}
+            </div>
 
-                {/* Timeline Tab */}
-                <TabsContent value="timeline">
-                  <EventTimeline
-                    events={current.events}
-                    applicationId={current.id}
-                    onEventAdded={handleEventAdded}
-                    onEventUpdated={handleEventUpdated}
-                  />
-                </TabsContent>
+            {/* ── Tab Content ─────────────────────────────────────────── */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
 
-                {/* Recruiter Tab */}
-                <TabsContent value="recruiter">
-                  <div className="space-y-4">
-                    {current.recruiterName || current.recruiterEmail || current.recruiterLinkedIn ? (
-                      <div className="p-4 border border-[var(--border)] rounded-lg space-y-3">
-                        {current.recruiterName && (
-                          <div className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-[var(--text-muted)]" />
-                            <span className="text-[13px] font-medium">{current.recruiterName}</span>
-                          </div>
-                        )}
-                        {current.recruiterEmail && (
-                          <div className="flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-[var(--text-muted)]" />
-                            <a
-                              href={`mailto:${current.recruiterEmail}`}
-                              className="text-[13px] text-[var(--primary)] hover:underline"
-                            >
-                              {current.recruiterEmail}
-                            </a>
-                          </div>
-                        )}
-                        {current.recruiterLinkedIn && (
-                          <div className="flex items-center gap-2">
-                            <Link2 className="w-4 h-4 text-[var(--text-muted)]" />
-                            <a
-                              href={current.recruiterLinkedIn}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-[13px] text-[var(--primary)] hover:underline"
-                            >
-                              LinkedIn Profile
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="text-center py-6">
-                        <User className="w-8 h-8 text-[var(--text-subtle)] mx-auto mb-2" />
-                        <p className="text-sm text-[var(--text-muted)]">No recruiter info yet</p>
-                        <p className="text-xs text-[var(--text-subtle)] mt-1">Edit application to add recruiter details</p>
-                      </div>
-                    )}
+              {/* TIMELINE */}
+              {activeTab === "Timeline" && (
+                <EventTimeline
+                  events={current.events ?? []}
+                  applicationId={current.id}
+                  onEventAdded={handleEventAdded}
+                  onEventUpdated={handleEventUpdated}
+                />
+              )}
 
-                    {/* Email threads */}
-                    {(current.emails?.length ?? 0) > 0 && (
-                      <div>
-                        <p className="text-[12px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-2">
-                          Email Threads
-                        </p>
-                        <div className="space-y-2">
-                          {current.emails?.map((email) => (
-                            <div key={email.id} className="p-3 border border-[var(--border)] rounded-lg">
-                              <p className="text-[13px] font-medium">{email.subject}</p>
-                              {email.snippet && (
-                                <p className="text-[11px] text-[var(--text-muted)] mt-0.5 line-clamp-2">
-                                  {email.snippet}
-                                </p>
-                              )}
-                              <p className="text-[10px] text-[var(--text-subtle)] mt-1">
-                                {formatDate(email.lastMessageAt)} · {email.messageCount} message{email.messageCount !== 1 ? "s" : ""}
-                              </p>
-                            </div>
-                          ))}
+              {/* RECRUITER */}
+              {activeTab === "Recruiter" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  {current.recruiterName || current.recruiterEmail || current.recruiterLinkedIn ? (
+                    <div style={{ border: "1px solid #E5E7EB", borderRadius: 10, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                      {current.recruiterName && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <User size={15} color="#9CA3AF" />
+                          <span style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{current.recruiterName}</span>
                         </div>
-                      </div>
-                    )}
-
-                    {/* Follow-up drafter */}
-                    <FollowUpDrafter application={current} />
-                  </div>
-                </TabsContent>
-
-                {/* Notes Tab */}
-                <TabsContent value="notes">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-[12px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-2 block">
-                        Notes
-                      </label>
-                      <NotesEditor
-                        value={current.notes || ""}
-                        onSave={handleNotesUpdate}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[12px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-2 block">
-                        Job Description
-                      </label>
-                      <p className="text-[12px] text-[var(--text-subtle)] mb-2">
-                        Paste the full JD — used for AI match scoring
-                      </p>
-                      <NotesEditor
-                        value={current.jobDescription || ""}
-                        onSave={async (jd) => {
-                          const res = await fetch(`/api/applications/${current.id}`, {
-                            method: "PATCH",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ jobDescription: jd }),
-                          });
-                          const updated = await res.json();
-                          setLocalApp(updated);
-                          onUpdate(updated);
-                        }}
-                        placeholder="Paste full job description here…"
-                        rows={8}
-                      />
-                    </div>
-
-                    {/* Status History */}
-                    {(current.statusHistory?.length ?? 0) > 0 && (
-                      <div>
-                        <label className="text-[12px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-2 block">
-                          Status History
-                        </label>
-                        <div className="space-y-1">
-                          {current.statusHistory?.slice(0, 6).map((h) => (
-                            <div key={h.id} className="flex items-center gap-2 text-[12px]">
-                              <span className="text-[var(--text-subtle)]">{formatDate(h.changedAt)}</span>
-                              <span className="text-[var(--text-muted)]">→</span>
-                              <StatusBadge status={h.toStatus} size="sm" />
-                              {h.note && <span className="text-[var(--text-subtle)]">· {h.note}</span>}
-                            </div>
-                          ))}
+                      )}
+                      {current.recruiterEmail && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <Mail size={15} color="#9CA3AF" />
+                          <a href={`mailto:${current.recruiterEmail}`} style={{ fontSize: 13, color: "#005F4B", textDecoration: "none" }}
+                            onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.textDecoration = "underline")}
+                            onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.textDecoration = "none")}
+                          >{current.recruiterEmail}</a>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
+                      )}
+                      {current.recruiterLinkedIn && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <Link2 size={15} color="#9CA3AF" />
+                          <a href={current.recruiterLinkedIn} target="_blank" rel="noopener noreferrer"
+                            style={{ fontSize: 13, color: "#005F4B", textDecoration: "none" }}
+                            onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.textDecoration = "underline")}
+                            onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.textDecoration = "none")}
+                          >LinkedIn Profile</a>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: "center", padding: "32px 0", color: "#9CA3AF" }}>
+                      <User size={32} style={{ margin: "0 auto 8px", opacity: 0.4 }} />
+                      <p style={{ fontSize: 13, margin: 0 }}>No recruiter info</p>
+                      <p style={{ fontSize: 11.5, marginTop: 4 }}>Edit application to add recruiter details</p>
+                    </div>
+                  )}
 
-                {/* AI Tab */}
-                <TabsContent value="ai">
-                  <div className="space-y-6">
-                    <MatchScoreCard application={current} onScoreUpdate={(score, notes) => {
-                      const updated = { ...current, matchScore: score, aiNotes: notes };
-                      setLocalApp(updated as ApplicationWithRelations);
-                      onUpdate(updated as ApplicationWithRelations);
+                  {(current.emails?.length ?? 0) > 0 && (
+                    <div>
+                      <p style={{ fontSize: 11, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Email Threads</p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {current.emails?.map((email) => (
+                          <div key={email.id} style={{ padding: 12, border: "1px solid #E5E7EB", borderRadius: 8 }}>
+                            <p style={{ fontSize: 13, fontWeight: 500, color: "#111827", margin: 0 }}>{email.subject}</p>
+                            {email.snippet && <p style={{ fontSize: 11.5, color: "#6B7280", marginTop: 4, lineHeight: 1.5 }}>{email.snippet}</p>}
+                            <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 6 }}>
+                              {formatDate(email.lastMessageAt)} · {email.messageCount} message{email.messageCount !== 1 ? "s" : ""}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <FollowUpDrafter application={current} />
+                </div>
+              )}
+
+              {/* NOTES */}
+              {activeTab === "Notes" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Notes</label>
+                    <NotesEditor value={current.notes || ""} onSave={async (notes) => {
+                      const res = await fetch(`/api/applications/${current.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ notes }) });
+                      const updated = await res.json(); setLocalApp(updated); onUpdate(updated);
                     }} />
-                    <PrepQuestionsPanel application={current} />
                   </div>
-                </TabsContent>
-              </Tabs>
+                  <div>
+                    <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Job Description</label>
+                    <p style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 8 }}>Paste the full JD — used for AI match scoring</p>
+                    <NotesEditor value={current.jobDescription || ""} placeholder="Paste full job description here…" rows={8}
+                      onSave={async (jd) => {
+                        const res = await fetch(`/api/applications/${current.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jobDescription: jd }) });
+                        const updated = await res.json(); setLocalApp(updated); onUpdate(updated);
+                      }} />
+                  </div>
+                  {(current.statusHistory?.length ?? 0) > 0 && (
+                    <div>
+                      <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Status History</label>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {current.statusHistory?.slice(0, 6).map((h) => (
+                          <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                            <span style={{ color: "#9CA3AF" }}>{formatDate(h.changedAt)}</span>
+                            <span style={{ color: "#D1D5DB" }}>→</span>
+                            <StatusBadge status={h.toStatus} size="sm" />
+                            {h.note && <span style={{ color: "#9CA3AF" }}>· {h.note}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* AI INSIGHTS */}
+              {activeTab === "AI Insights" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                  <MatchScoreCard application={current} onScoreUpdate={(score, notes) => {
+                    const updated = { ...current, matchScore: score, aiNotes: notes };
+                    setLocalApp(updated as ApplicationWithRelations);
+                    onUpdate(updated as ApplicationWithRelations);
+                  }} />
+                  <PrepQuestionsPanel application={current} />
+                </div>
+              )}
             </div>
           </>
         )}
-      </SheetContent>
-    </Sheet>
+      </div>
+
+      <style>{`
+        @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.4 } }
+      `}</style>
+    </>
   );
 }
 
-// ─── Notes Editor ─────────────────────────────────────────────────────────────
+// ── Notes Editor ─────────────────────────────────────────────────────────────
 
 function NotesEditor({
-  value,
-  onSave,
-  placeholder = "Add your notes here…",
-  rows = 5,
+  value, onSave, placeholder = "Add your notes here…", rows = 5,
 }: {
-  value: string;
-  onSave: (val: string) => void;
-  placeholder?: string;
-  rows?: number;
+  value: string; onSave: (val: string) => void; placeholder?: string; rows?: number;
 }) {
   const [text, setText] = useState(value);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => { setText(value); }, [value]);
 
   const handleBlur = async () => {
     if (text === value) return;
@@ -377,7 +426,7 @@ function NotesEditor({
   };
 
   return (
-    <div className="relative">
+    <div style={{ position: "relative" }}>
       <Textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -386,16 +435,8 @@ function NotesEditor({
         rows={rows}
         className="text-[13px] resize-none"
       />
-      {saving && (
-        <span className="absolute bottom-2 right-2 text-[10px] text-[var(--text-subtle)]">
-          Saving…
-        </span>
-      )}
-      {saved && (
-        <span className="absolute bottom-2 right-2 text-[10px] text-green-500">
-          Saved ✓
-        </span>
-      )}
+      {saving && <span style={{ position: "absolute", bottom: 8, right: 10, fontSize: 10, color: "#9CA3AF" }}>Saving…</span>}
+      {saved && <span style={{ position: "absolute", bottom: 8, right: 10, fontSize: 10, color: "#10B981" }}>Saved ✓</span>}
     </div>
   );
 }

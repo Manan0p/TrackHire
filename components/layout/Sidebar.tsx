@@ -7,6 +7,7 @@ import {
   List,
   Calendar,
   BarChart3,
+  Settings,
   Plus,
   User,
 } from "lucide-react";
@@ -17,6 +18,7 @@ const navItems = [
   { href: "/list", label: "List", icon: List },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function Sidebar() {

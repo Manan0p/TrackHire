@@ -5,7 +5,7 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { Plus } from "lucide-react";
 import { ApplicationCard } from "./ApplicationCard";
 import { AppStatus } from "@prisma/client";
-import { STATUS_LABELS, STATUS_COLORS } from "@/types";
+import { STATUS_LABELS } from "@/types";
 import type { ApplicationWithRelations } from "@/types";
 
 const COLUMN_LABELS: Partial<Record<AppStatus, string>> = {
@@ -16,6 +16,17 @@ const COLUMN_LABELS: Partial<Record<AppStatus, string>> = {
   TECHNICAL: "TECHNICAL",
   FINAL: "FINAL ROUND",
   OFFER: "OFFER",
+};
+
+// Spec-defined status border colors
+const COLUMN_COLORS: Partial<Record<AppStatus, string>> = {
+  WISHLIST:  "#3B82F6",  // blue
+  APPLIED:   "#10B981",  // teal/green
+  OA:        "#F59E0B",  // amber
+  PHONE:     "#F97316",  // orange
+  TECHNICAL: "#8B5CF6",  // purple
+  FINAL:     "#F43F5E",  // pink/red
+  OFFER:     "#14B8A6",  // teal
 };
 
 interface KanbanColumnProps {
@@ -36,7 +47,7 @@ export function KanbanColumn({
   onArchiveApplication,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
-  const color = STATUS_COLORS[status];
+  const color = COLUMN_COLORS[status] ?? "#9CA3AF";
   const label = COLUMN_LABELS[status] ?? STATUS_LABELS[status].toUpperCase();
 
   return (
