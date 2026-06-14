@@ -2,30 +2,27 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AppStatus } from "@prisma/client";
-import {
-  Plus,
-  Bell,
-  Search,
-  User,
-} from "lucide-react";
+import { Plus, Bell, Search } from "lucide-react";
+import { UserAvatar } from "@/components/layout/UserAvatar";
 import { toast } from "sonner";
 import { ApplicationDetail } from "@/components/applications/ApplicationDetail";
-import { ApplicationForm } from "@/components/applications/ApplicationForm";
 import { KanbanBoard } from "@/components/board/KanbanBoard";
 import { CommandPalette } from "@/components/layout/CommandPalette";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ApplicationWithRelations } from "@/types";
+
+/** Dispatch the shared global Add Application dialog with a given status */
+function openAddDialog(status: AppStatus = "APPLIED") {
+  window.dispatchEvent(
+    new CustomEvent("open-add-application", { detail: { status } })
+  );
+}
 
 export default function BoardPage() {
   const [applications, setApplications] = useState<ApplicationWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedApp, setSelectedApp] = useState<ApplicationWithRelations | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
-  const [defaultStatus, setDefaultStatus] = useState<AppStatus>("APPLIED");
   const [search, setSearch] = useState("");
 
   const fetchApplications = useCallback(async () => {
@@ -43,25 +40,23 @@ export default function BoardPage() {
   }, [search]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void fetchApplications();
-    }, 0);
+    const timer = window.setTimeout(() => void fetchApplications(), 0);
     return () => window.clearTimeout(timer);
   }, [fetchApplications]);
+
+  // Listen for apps added via the global dialog
+  useEffect(() => {
+    const handleAdded = (e: Event) => {
+      const app = (e as CustomEvent<{ app: ApplicationWithRelations }>).detail?.app;
+      if (app) setApplications((prev) => [app, ...prev]);
+    };
+    window.addEventListener("application-added", handleAdded);
+    return () => window.removeEventListener("application-added", handleAdded);
+  }, []);
 
   const handleCardClick = (app: ApplicationWithRelations) => {
     setSelectedApp(app);
     setDetailOpen(true);
-  };
-
-  const handleAddApplication = (status: AppStatus) => {
-    setDefaultStatus(status);
-    setAddOpen(true);
-  };
-
-  const handleApplicationAdded = (app: ApplicationWithRelations) => {
-    setApplications((prev) => [app, ...prev]);
-    setAddOpen(false);
   };
 
   const handleApplicationUpdated = (updated: ApplicationWithRelations) => {
@@ -70,8 +65,6 @@ export default function BoardPage() {
     );
     setSelectedApp(updated);
   };
-
-
 
   const handleGmailSync = async () => {
     toast.promise(
@@ -94,60 +87,110 @@ export default function BoardPage() {
   };
 
   return (
-    <div className="flex h-full flex-col bg-[var(--background)]">
-      {/* Top Bar — matches Stitch design: single unified header */}
-      <header className="flex items-center px-6 h-14 bg-white border-b border-[var(--border)] shrink-0 z-10 w-full sticky top-0 gap-3">
+    <div className="flex h-full flex-col" style={{ background: "#F7F7F4" }}>
+      {/* Top Bar */}
+      <header
+        style={{
+          display: "flex",
+          alignItems: "center",
+          padding: "0 20px",
+          height: "52px",
+          background: "#ffffff",
+          borderBottom: "1px solid #E5E7EB",
+          flexShrink: 0,
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          gap: "10px",
+        }}
+      >
         {/* Search */}
-        <div className="relative flex-1 min-w-0 max-w-[338px]">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--text-muted)]" />
-          <Input
+        <div style={{ position: "relative", width: "300px", flexShrink: 0 }}>
+          <Search
+            style={{
+              position: "absolute",
+              left: "10px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: 14,
+              height: 14,
+              color: "#9CA3AF",
+            }}
+          />
+          <input
             placeholder="Search applications..."
-            className="w-full pl-9 pr-3 bg-[var(--surface-container-low)] border border-[var(--border)] rounded-md text-[12px] h-8 focus-visible:ring-1 focus-visible:ring-[var(--primary)]/30"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            style={{
+              width: "100%",
+              height: "34px",
+              paddingLeft: "32px",
+              paddingRight: "12px",
+              border: "1px solid #E5E7EB",
+              borderRadius: "8px",
+              fontSize: "12.5px",
+              color: "#374151",
+              background: "#F9FAFB",
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+            onFocus={(e) => { e.target.style.borderColor = "#005F4B"; e.target.style.background = "#fff"; }}
+            onBlur={(e) => { e.target.style.borderColor = "#E5E7EB"; e.target.style.background = "#F9FAFB"; }}
           />
         </div>
 
-        {/* Spacer */}
-        <div className="flex-1" />
+        <div style={{ flex: 1 }} />
 
-        {/* Actions */}
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 w-8 p-0 text-[var(--text-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-container-low)] rounded-md"
+        {/* Right Actions */}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {/* Bell */}
+          <button
             title="Notifications"
+            style={{
+              width: 34, height: 34, border: "none", background: "transparent",
+              cursor: "pointer", display: "flex", alignItems: "center",
+              justifyContent: "center", borderRadius: "8px", color: "#6B7280",
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "#F3F4F6")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
-            <Bell className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 gap-1.5 bg-white text-[12px] hover:bg-slate-50 border-[var(--border)] text-[var(--foreground)] px-2.5"
+            <Bell size={17} strokeWidth={1.8} />
+          </button>
+
+          {/* Sync Gmail */}
+          <button
             onClick={handleGmailSync}
+            style={{
+              height: 34, padding: "0 14px", border: "1px solid #D1D5DB",
+              borderRadius: "8px", background: "#ffffff", fontSize: "12.5px",
+              fontWeight: 500, color: "#374151", cursor: "pointer", transition: "background 0.15s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "#F9FAFB")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "#ffffff")}
           >
             Sync Gmail
-          </Button>
-          <Button
-            size="sm"
-            className="h-8 gap-1.5 bg-[var(--primary)] px-3 text-[12px] text-white hover:bg-[var(--primary-dark)] font-semibold shadow-sm"
-            onClick={() => handleAddApplication("APPLIED")}
-          >
-            <Plus className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
-            Add Application
-          </Button>
-
-          <button
-            className="h-8 w-8 rounded-full border border-[var(--border)] bg-[var(--surface-container-low)] text-[var(--text-muted)] flex items-center justify-center hover:bg-[var(--surface-container-high)] transition-colors"
-            title="Account"
-          >
-            <User className="h-4 w-4" />
           </button>
+
+          {/* Add Application — uses global dialog */}
+          <button
+            onClick={() => openAddDialog("APPLIED")}
+            style={{
+              height: 34, padding: "0 14px", border: "none", borderRadius: "8px",
+              background: "#005F4B", fontSize: "12.5px", fontWeight: 600,
+              color: "#ffffff", cursor: "pointer", display: "flex",
+              alignItems: "center", gap: "5px", transition: "background 0.15s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "#004A3A")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "#005F4B")}
+          >
+            <Plus size={14} strokeWidth={2.5} />
+            Add Application
+          </button>
+
+          <UserAvatar size={32} />
         </div>
       </header>
-
-
 
       {loading ? (
         <div className="kanban-board pt-5">
@@ -169,7 +212,7 @@ export default function BoardPage() {
           key={`${search}:${applications.map((a) => `${a.id}:${a.status}:${a.boardOrder}`).join("|")}`}
           initialApplications={applications}
           onCardClick={handleCardClick}
-          onAddApplication={handleAddApplication}
+          onAddApplication={openAddDialog}
           onEditApplication={handleCardClick}
         />
       )}
@@ -181,21 +224,8 @@ export default function BoardPage() {
         onUpdate={handleApplicationUpdated}
       />
 
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-base">Add Application</DialogTitle>
-          </DialogHeader>
-          <ApplicationForm
-            defaultStatus={defaultStatus}
-            onSuccess={handleApplicationAdded}
-            onCancel={() => setAddOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
       <CommandPalette
-        onAddApplication={() => handleAddApplication("APPLIED")}
+        onAddApplication={() => openAddDialog("APPLIED")}
         onGmailSync={() => toast.info("Gmail sync coming soon - connect in Settings")}
       />
     </div>

@@ -142,15 +142,44 @@ export function KanbanBoard({
           ))}
         </div>
 
-        <div className="mx-2 mb-2 flex h-7 items-center justify-between rounded-sm border border-[var(--border)] bg-white px-2">
-          <span className="text-[11px] font-medium text-[var(--text-muted)]">
-            Archived Applications (Rejected / Withdrawn)
-          </span>
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--text-subtle)]">
-            <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-[var(--surface-container-high)] px-1 text-[10px] leading-4 text-[var(--text-muted)]">
+        <div
+          style={{
+            margin: "4px 8px 6px",
+            height: 32,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            borderRadius: 6,
+            border: "1px solid #E5E7EB",
+            background: "#F9FAFB",
+            padding: "0 12px",
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#6B7280" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20 7H4a1 1 0 00-1 1v1a1 1 0 001 1h16a1 1 0 001-1V8a1 1 0 00-1-1zM5 10v8a2 2 0 002 2h10a2 2 0 002-2v-8" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10 14h4" />
+            </svg>
+            <span style={{ fontSize: 11.5, fontWeight: 500, color: "#6B7280" }}>
+              Archived Applications (Rejected / Withdrawn)
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span
+              style={{
+                background: "#E5E7EB",
+                color: "#374151",
+                fontSize: 10.5,
+                fontWeight: 700,
+                padding: "1px 7px",
+                borderRadius: 10,
+                lineHeight: "16px",
+              }}
+            >
               {ARCHIVED_COLUMNS.reduce((sum, status) => sum + getColumnApps(status).length, 0)}
             </span>
-            <ChevronUp className="h-3 w-3" />
+            <ChevronUp style={{ width: 13, height: 13, color: "#6B7280" }} />
           </div>
         </div>
       </div>

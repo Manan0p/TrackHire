@@ -5,9 +5,17 @@ import { CSS } from "@dnd-kit/utilities";
 import { useState } from "react";
 import { Archive, Edit2, Plus } from "lucide-react";
 import { CompanyLogo } from "@/components/applications/CompanyLogo";
-import { SourceBadge } from "@/components/applications/SourceBadge";
 import { cn, daysSince } from "@/lib/utils";
 import type { ApplicationWithRelations } from "@/types";
+
+const SOURCE_BADGE: Record<string, { bg: string; color: string; border: string; label: string }> = {
+  LINKEDIN:      { bg: "#EFF6FF", color: "#2563EB", border: "#BFDBFE", label: "LinkedIn" },
+  WELLFOUND:     { bg: "#FFF7ED", color: "#EA580C", border: "#FED7AA", label: "Wellfound" },
+  EMAIL:         { bg: "#F0FDF4", color: "#16A34A", border: "#BBF7D0", label: "Email" },
+  COMPANY_PORTAL:{ bg: "#F5F5F4", color: "#57534E", border: "#D6D3D1", label: "Careers" },
+  REFERRAL:      { bg: "#FFF7ED", color: "#C2410C", border: "#FED7AA", label: "Referral" },
+  OTHER:         { bg: "#F5F5F4", color: "#57534E", border: "#D6D3D1", label: "Direct" },
+};
 
 interface ApplicationCardProps {
   application: ApplicationWithRelations;
@@ -40,85 +48,190 @@ export function ApplicationCard({
   };
 
   const days = daysSince(application.appliedAt || application.createdAt);
+  const src = SOURCE_BADGE[application.source] || SOURCE_BADGE.OTHER;
+  const isOld = days > 14;
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={cn(
-        "bg-[var(--surface-container-lowest)] border border-[#cbd3ce] rounded-md p-2.5 shadow-[0_1px_1px_rgba(0,0,0,0.03)] hover:border-[#aab8b1] hover:shadow-sm transition-all cursor-pointer group relative flex flex-col gap-1.5",
-        isDragging && "opacity-50 cursor-grabbing"
-      )}
+      className={cn(isDragging && "opacity-50 cursor-grabbing")}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
       onClick={onClick}
       {...attributes}
       {...listeners}
     >
-      {/* Top row: Logo + Company + Source */}
-      <div className="flex justify-between items-start">
-        <div className="flex items-center gap-2 min-w-0">
-          <CompanyLogo company={application.company} size={20} />
-          <span className="font-semibold text-[12.5px] text-[var(--foreground)] truncate max-w-[122px]">
-            {application.company}
+      <div
+        style={{
+          background: "#ffffff",
+          border: "1px solid #E4E7EC",
+          borderRadius: 8,
+          padding: "10px 11px",
+          cursor: "pointer",
+          transition: "border-color 0.15s, box-shadow 0.15s",
+          position: "relative",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 5,
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLDivElement).style.borderColor = "#C8D0DC";
+          (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLDivElement).style.borderColor = "#E4E7EC";
+          (e.currentTarget as HTMLDivElement).style.boxShadow = "0 1px 2px rgba(0,0,0,0.04)";
+        }}
+      >
+        {/* Top row: Logo + Company name + Source badge */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0, flex: 1 }}>
+            <CompanyLogo company={application.company} size={20} />
+            <span
+              style={{
+                fontSize: 12.5,
+                fontWeight: 600,
+                color: "#111827",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                maxWidth: 120,
+              }}
+            >
+              {application.company}
+            </span>
+          </div>
+          {/* Source badge */}
+          <span
+            style={{
+              display: "inline-block",
+              padding: "2px 7px",
+              borderRadius: 5,
+              fontSize: 10,
+              fontWeight: 500,
+              background: src.bg,
+              color: src.color,
+              border: `1px solid ${src.border}`,
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
+          >
+            {src.label}
           </span>
         </div>
-        <SourceBadge source={application.source} size="sm" />
-      </div>
 
-      {/* Role Title */}
-      <div className="text-[11px] text-[var(--text-muted)] truncate">
-        {application.role}
-      </div>
-
-      {/* Bottom row: Time + Match Score */}
-      <div className="flex justify-between items-center mt-auto pt-1">
-        <div className="text-[10.5px] text-[var(--text-subtle)] font-medium">
-          Added {days === 0 ? "today" : `${days}d ago`}
+        {/* Role */}
+        <div
+          style={{
+            fontSize: 11.5,
+            color: "#6B7280",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {application.role}
         </div>
 
-        {application.matchScore !== null && application.matchScore !== undefined && (
-          <div className="bg-[var(--primary-container)] text-[var(--on-primary-container)] font-bold text-[9.5px] px-1.5 py-0.5 rounded">
-            {application.matchScore}% Match
+        {/* Bottom row: time + match */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 2 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <span
+              style={{
+                width: 6, height: 6, borderRadius: "50%",
+                background: isOld ? "#EF4444" : "#10B981",
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ fontSize: 10.5, color: "#9CA3AF", fontWeight: 500 }}>
+              {days === 0 ? "Today" : `${days}d ago`}
+            </span>
+          </div>
+
+          {application.matchScore !== null && application.matchScore !== undefined && (
+            <span
+              style={{
+                display: "inline-block",
+                padding: "2px 7px",
+                borderRadius: 5,
+                fontSize: 10,
+                fontWeight: 700,
+                background: "#005F4B",
+                color: "#ffffff",
+              }}
+            >
+              {application.matchScore}% Match
+            </span>
+          )}
+        </div>
+
+        {/* Hover action bar */}
+        {showActions && (
+          <div
+            style={{
+              position: "absolute",
+              right: 6,
+              top: 6,
+              display: "flex",
+              gap: 3,
+              background: "#ffffff",
+              border: "1px solid #E4E7EC",
+              borderRadius: 6,
+              padding: "2px 3px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {onEdit && (
+              <button
+                style={{
+                  width: 22, height: 22, border: "none", background: "transparent",
+                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                  borderRadius: 4, color: "#6B7280", transition: "all 0.1s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "#EFF6FF"; e.currentTarget.style.color = "#2563EB"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#6B7280"; }}
+                onClick={onEdit}
+                title="Edit"
+              >
+                <Edit2 size={11} />
+              </button>
+            )}
+            {onAddEvent && (
+              <button
+                style={{
+                  width: 22, height: 22, border: "none", background: "transparent",
+                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                  borderRadius: 4, color: "#6B7280", transition: "all 0.1s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "#F0FDF4"; e.currentTarget.style.color = "#16A34A"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#6B7280"; }}
+                onClick={onAddEvent}
+                title="Add event"
+              >
+                <Plus size={11} />
+              </button>
+            )}
+            {onArchive && (
+              <button
+                style={{
+                  width: 22, height: 22, border: "none", background: "transparent",
+                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                  borderRadius: 4, color: "#6B7280", transition: "all 0.1s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "#FEF2F2"; e.currentTarget.style.color = "#EF4444"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#6B7280"; }}
+                onClick={onArchive}
+                title="Archive"
+              >
+                <Archive size={11} />
+              </button>
+            )}
           </div>
         )}
       </div>
-
-      {/* Hover action bar */}
-      {showActions && (
-        <div
-          className="animate-scale-in absolute right-1.5 top-1.5 flex gap-1 bg-[var(--surface-container-lowest)] border border-[var(--border)] rounded-md p-0.5 shadow-md"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {onEdit && (
-            <button
-              className="flex h-6 w-6 items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--primary-light)] hover:text-[var(--primary)] transition-colors"
-              onClick={onEdit}
-              title="Edit"
-            >
-              <Edit2 className="h-3 w-3" />
-            </button>
-          )}
-          {onAddEvent && (
-            <button
-              className="flex h-6 w-6 items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--primary-light)] hover:text-[var(--primary)] transition-colors"
-              onClick={onAddEvent}
-              title="Add event"
-            >
-              <Plus className="h-3 w-3" />
-            </button>
-          )}
-          {onArchive && (
-            <button
-              className="flex h-6 w-6 items-center justify-center rounded text-[var(--text-muted)] hover:bg-red-50 hover:text-red-500 transition-colors"
-              onClick={onArchive}
-              title="Archive"
-            >
-              <Archive className="h-3 w-3" />
-            </button>
-          )}
-        </div>
-      )}
     </div>
   );
 }

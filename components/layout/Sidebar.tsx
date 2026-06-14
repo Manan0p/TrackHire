@@ -7,7 +7,6 @@ import {
   List,
   Calendar,
   BarChart3,
-  Settings,
   Plus,
   User,
 } from "lucide-react";
@@ -18,7 +17,6 @@ const navItems = [
   { href: "/list", label: "List", icon: List },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function Sidebar() {
@@ -29,54 +27,159 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="h-screen w-[180px] bg-[var(--inverse-surface)] border-r border-black/20 flex flex-col py-6 px-4 z-20 shrink-0">
+    <aside
+      style={{
+        width: "215px",
+        height: "100vh",
+        background: "#1C2333",
+        borderRight: "1px solid rgba(255,255,255,0.07)",
+        display: "flex",
+        flexDirection: "column",
+        padding: "24px 12px",
+        flexShrink: 0,
+        zIndex: 20,
+      }}
+    >
       {/* Brand */}
-      <div className="mb-8 px-1">
-        <span className="block whitespace-nowrap font-bold text-[36px] tracking-[-0.02em] text-white leading-[0.95]">TrackHire</span>
-        <span className="block text-[11px] font-medium text-[var(--sidebar-foreground)] opacity-75 mt-1">
+      <div style={{ marginBottom: "24px", padding: "0 8px" }}>
+        <span
+          style={{
+            display: "block",
+            fontSize: "20px",
+            fontWeight: 700,
+            letterSpacing: "-0.02em",
+            color: "#ffffff",
+            lineHeight: 1.1,
+          }}
+        >
+          TrackHire
+        </span>
+        <span
+          style={{
+            display: "block",
+            fontSize: "11px",
+            color: "rgba(255,255,255,0.45)",
+            marginTop: "3px",
+            fontWeight: 400,
+          }}
+        >
           Career Manager
         </span>
       </div>
 
       {/* CTA Button */}
-      <div className="mb-6">
+      <div style={{ marginBottom: "20px" }}>
         <button
           onClick={handleAddClick}
-          className="w-full bg-[var(--primary-container)] text-[var(--on-primary-container)] font-semibold text-[12px] py-2 px-3 rounded-lg flex items-center justify-center gap-1 hover:bg-[var(--primary)] transition-colors duration-200"
+          style={{
+            width: "100%",
+            height: "36px",
+            background: "#005F4B",
+            color: "#ffffff",
+            border: "none",
+            borderRadius: "8px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "6px",
+            fontSize: "12px",
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "background 0.15s",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "#00503F")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "#005F4B")}
         >
-          <Plus className="w-[18px] h-[18px] text-white" strokeWidth={2.4} />
-          <span>Add Application</span>
+          <Plus size={15} strokeWidth={2.5} />
+          Add Application
         </button>
       </div>
 
-      {/* Navigation Tabs */}
-      <nav className="flex-1 space-y-1">
+      {/* Navigation */}
+      <nav style={{ flex: 1, display: "flex", flexDirection: "column", gap: "2px" }}>
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
           return (
             <Link
               key={href}
               href={href}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 text-[12px] font-medium",
-                active
-                  ? "bg-[var(--primary-container)] text-white font-semibold shadow-sm"
-                  : "text-[var(--sidebar-foreground)] hover:text-white hover:bg-[var(--primary-container)]/20"
-              )}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "9px",
+                padding: "9px 10px",
+                borderRadius: "8px",
+                fontSize: "13px",
+                fontWeight: active ? 600 : 500,
+                textDecoration: "none",
+                color: active ? "#ffffff" : "rgba(255,255,255,0.6)",
+                background: active ? "#005F4B" : "transparent",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                if (!active) {
+                  (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.07)";
+                  (e.currentTarget as HTMLAnchorElement).style.color = "#ffffff";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!active) {
+                  (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
+                  (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.6)";
+                }
+              }}
             >
-              <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={active ? 2.1 : 1.8} />
+              <Icon size={16} strokeWidth={active ? 2.2 : 1.8} style={{ flexShrink: 0 }} />
               <span>{label}</span>
             </Link>
           );
         })}
       </nav>
 
-      {/* Bottom account strip */}
-      <div className="mt-auto border-t border-white/10 pt-4">
-        <button className="flex w-full items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-medium text-[var(--sidebar-foreground)] hover:text-white hover:bg-[var(--primary-container)]/20 transition-colors duration-200">
-          <User className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
-          <span>Account</span>
-        </button>
+      {/* Account → /settings */}
+      <div
+        style={{
+          borderTop: "1px solid rgba(255,255,255,0.08)",
+          paddingTop: "12px",
+          marginTop: "12px",
+        }}
+      >
+        {(() => {
+          const active = pathname === "/settings";
+          return (
+            <Link
+              href="/settings"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "9px",
+                padding: "9px 10px",
+                borderRadius: "8px",
+                fontSize: "13px",
+                fontWeight: active ? 600 : 500,
+                textDecoration: "none",
+                color: active ? "#ffffff" : "rgba(255,255,255,0.6)",
+                background: active ? "#005F4B" : "transparent",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                if (!active) {
+                  (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.07)";
+                  (e.currentTarget as HTMLAnchorElement).style.color = "#ffffff";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!active) {
+                  (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
+                  (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.6)";
+                }
+              }}
+            >
+              <User size={16} strokeWidth={active ? 2.2 : 1.8} style={{ flexShrink: 0 }} />
+              <span>Account</span>
+            </Link>
+          );
+        })()}
       </div>
     </aside>
   );

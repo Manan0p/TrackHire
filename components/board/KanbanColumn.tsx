@@ -8,6 +8,16 @@ import { AppStatus } from "@prisma/client";
 import { STATUS_LABELS, STATUS_COLORS } from "@/types";
 import type { ApplicationWithRelations } from "@/types";
 
+const COLUMN_LABELS: Partial<Record<AppStatus, string>> = {
+  WISHLIST: "WISHLIST",
+  APPLIED: "APPLIED",
+  OA: "OA",
+  PHONE: "PHONE SCREEN",
+  TECHNICAL: "TECHNICAL",
+  FINAL: "FINAL ROUND",
+  OFFER: "OFFER",
+};
+
 interface KanbanColumnProps {
   status: AppStatus;
   applications: ApplicationWithRelations[];
@@ -27,39 +37,83 @@ export function KanbanColumn({
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const color = STATUS_COLORS[status];
-  const compactLabel = status === "OA" ? "OA" : STATUS_LABELS[status];
+  const label = COLUMN_LABELS[status] ?? STATUS_LABELS[status].toUpperCase();
 
   return (
-    <div className="w-[242px] flex flex-col h-full shrink-0">
+    <div style={{ width: 240, display: "flex", flexDirection: "column", height: "100%", flexShrink: 0 }}>
       {/* Header */}
       <div
-        className="flex items-center justify-between mb-1.5 border-t-2 pt-1.5"
-        style={{ borderTopColor: color }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "8px",
+          borderTop: `2px solid ${color}`,
+          paddingTop: "10px",
+        }}
       >
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-[13px] text-[var(--foreground)] uppercase tracking-[0.08em]">
-            {compactLabel}
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <span
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              color: "#374151",
+              letterSpacing: "0.07em",
+            }}
+          >
+            {label}
           </span>
-          <span className="bg-[var(--surface-container-high)] text-[var(--text-muted)] font-bold text-[10px] px-1.5 py-0.5 rounded-full leading-none">
+          <span
+            style={{
+              background: "#F3F4F6",
+              color: "#6B7280",
+              fontSize: "10px",
+              fontWeight: 700,
+              padding: "1px 6px",
+              borderRadius: "10px",
+              lineHeight: "16px",
+            }}
+          >
             {applications.length}
           </span>
         </div>
         <button
           onClick={() => onAddApplication(status)}
-          className="text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors p-0.5 rounded hover:bg-[var(--surface-container-high)]"
           title={`Add ${STATUS_LABELS[status]} application`}
+          style={{
+            width: 22,
+            height: 22,
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 5,
+            color: "#9CA3AF",
+            transition: "all 0.15s",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "#F3F4F6"; e.currentTarget.style.color = "#005F4B"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#9CA3AF"; }}
         >
-          <Plus className="w-4 h-4" />
+          <Plus size={14} strokeWidth={2.2} />
         </button>
       </div>
 
       {/* Column Body / Drop Zone */}
       <div
         ref={setNodeRef}
-        className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-2 rounded-md transition-colors duration-200"
         style={{
+          flex: 1,
+          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          borderRadius: 8,
+          transition: "all 0.15s",
+          padding: "2px",
           ...(isOver && {
-            outline: `1px solid ${color}35`,
+            outline: `1.5px solid ${color}50`,
             backgroundColor: `${color}08`,
           }),
         }}
@@ -81,15 +135,50 @@ export function KanbanColumn({
         </SortableContext>
 
         {applications.length === 0 && (
-          <div className="flex-1 border-2 border-dashed border-[var(--border)]/55 rounded-md flex flex-col items-center justify-center">
+          <div
+            style={{
+              flex: 1,
+              minHeight: 100,
+              border: "2px dashed #D1D5DB",
+              borderRadius: 8,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+            }}
+          >
             <button
               onClick={() => onAddApplication(status)}
-              className="flex flex-col items-center gap-2 text-[var(--text-subtle)] hover:text-[var(--primary)] transition-colors group"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 6,
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "#9CA3AF",
+                transition: "color 0.15s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#005F4B")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#9CA3AF")}
             >
-              <div className="w-9 h-9 rounded-full bg-[var(--surface-container-high)] flex items-center justify-center group-hover:bg-[var(--primary-light)]">
-                <Plus className="w-4 h-4" />
+              <div
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: "50%",
+                  background: "#F3F4F6",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "background 0.15s",
+                }}
+              >
+                <Plus size={16} />
               </div>
-              <span className="text-[12px] font-medium">Drop or Add</span>
+              <span style={{ fontSize: "11.5px", fontWeight: 500 }}>Drop or Add</span>
             </button>
           </div>
         )}

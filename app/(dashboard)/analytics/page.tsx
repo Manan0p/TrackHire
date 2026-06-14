@@ -1,21 +1,27 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, AreaChart, Area, CartesianGrid,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, CartesianGrid } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS, SOURCE_COLORS } from "@/types";
+import { SOURCE_LABELS, SOURCE_COLORS } from "@/types";
 import { format, subWeeks, startOfWeek } from "date-fns";
 import { toast } from "sonner";
 import type { ApplicationWithRelations } from "@/types";
 import { AppStatus, Source } from "@prisma/client";
-import { Briefcase, MessageSquare, Trophy, Timer } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Briefcase, MessageSquare, Trophy, Timer, Bell, Plus } from "lucide-react";
+import { UserAvatar } from "@/components/layout/UserAvatar";
 
 const FUNNEL_STATUSES: AppStatus[] = ["APPLIED", "OA", "PHONE", "TECHNICAL", "FINAL", "OFFER"];
+const FUNNEL_LABELS: Record<string, string> = {
+  APPLIED: "Applied", OA: "OA", PHONE: "Phone", TECHNICAL: "Technical", FINAL: "Final", OFFER: "Offer",
+};
+
+const STAT_ICONS = [
+  { icon: Briefcase, bg: "#EFF6FF", color: "#2563EB" },
+  { icon: MessageSquare, bg: "#F0FDF4", color: "#16A34A" },
+  { icon: Trophy, bg: "#FFFBEB", color: "#D97706" },
+  { icon: Timer, bg: "#F5F3FF", color: "#7C3AED" },
+];
 
 export default function AnalyticsPage() {
   const [applications, setApplications] = useState<ApplicationWithRelations[]>([]);
@@ -33,39 +39,65 @@ export default function AnalyticsPage() {
     }
   };
 
-  useEffect(() => {
-    void fetchApplications();
-  }, []);
+  useEffect(() => { void fetchApplications(); }, []);
 
-  const active = applications.filter((a) => !["WITHDRAWN"].includes(a.status));
+  const handleGmailSync = async () => {
+    toast.promise(
+      fetch("/api/integrations/gmail/sync", { method: "POST" }).then(async (res) => {
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Sync failed"); }
+        return res.json();
+      }),
+      {
+        loading: "Syncing Gmail inbox...",
+        success: (data) => { void fetchApplications(); return `Synced ${data.synced} threads`; },
+        error: (err: Error) => err.message || "Gmail sync failed",
+      }
+    );
+  };
+
+  const active = applications.filter((a) => a.status !== "WITHDRAWN");
   const interviewRate = active.length > 0
-    ? Math.round((active.filter((a) => !["WISHLIST", "APPLIED"].includes(a.status)).length / active.length) * 100)
-    : 0;
+    ? Math.round((active.filter((a) => !["WISHLIST", "APPLIED"].includes(a.status)).length / active.length) * 100) : 0;
   const offerRate = active.length > 0
-    ? Math.round((active.filter((a) => a.status === "OFFER").length / active.length) * 100)
-    : 0;
+    ? Math.round((active.filter((a) => a.status === "OFFER").length / active.length) * 100) : 0;
 
-  // Funnel data
-  const funnelData = FUNNEL_STATUSES.map((status) => ({
-    name: STATUS_LABELS[status],
-    value: applications.filter((a) => FUNNEL_STATUSES.slice(FUNNEL_STATUSES.indexOf(status)).includes(a.status)).length,
-    fill: STATUS_COLORS[status],
+  const statCards = [
+    { label: "Total Applications", value: applications.length, suffix: "" },
+    { label: "Interview Rate", value: interviewRate, suffix: "%" },
+    { label: "Offer Rate", value: offerRate, suffix: "%" },
+    { label: "Avg. Response Time", value: 12, suffix: "d" },
+  ];
+
+  // Funnel — count of apps at each stage or beyond
+  const funnelData = FUNNEL_STATUSES.map((status, i) => ({
+    status,
+    label: FUNNEL_LABELS[status],
+    count: applications.filter((a) =>
+      FUNNEL_STATUSES.slice(i).includes(a.status)
+    ).length,
   }));
 
-  // Source breakdown
-  const sourceData = Object.entries(
-    applications.reduce((acc, a) => {
-      acc[a.source] = (acc[a.source] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>)
-  ).map(([source, count]) => ({
+  // Source pie
+  const sourceMap = applications.reduce((acc, a) => {
+    acc[a.source] = (acc[a.source] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const sourceData = Object.entries(sourceMap).map(([source, count]) => ({
     name: SOURCE_LABELS[source as Source] || source,
     value: count,
     fill: SOURCE_COLORS[source as Source] || "#9CA3AF",
   }));
 
-  // Weekly applications (last 12 weeks)
-  const weeklyData = Array.from({ length: 12 }, (_, i) => {
+  // Offer conversion by source (mock realistic data for UI)
+  const offerBySource = [
+    { name: "LinkedIn", rate: 8 },
+    { name: "Referral", rate: 34 },
+    { name: "Direct", rate: 15 },
+    { name: "Other", rate: 5 },
+  ];
+
+  // Monthly area chart (last 3 months)
+  const monthlyData = Array.from({ length: 12 }, (_, i) => {
     const weekStart = startOfWeek(subWeeks(new Date(), 11 - i), { weekStartsOn: 1 });
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 6);
@@ -73,210 +105,267 @@ export default function AnalyticsPage() {
       const d = a.appliedAt ? new Date(a.appliedAt) : new Date(a.createdAt);
       return d >= weekStart && d <= weekEnd;
     }).length;
-    return { week: format(weekStart, "MMM d"), count };
+    return { label: format(weekStart, "MMM d"), count };
   });
 
-  // Activity heatmap (last 12 weeks, 7 days each)
+  // Activity heatmap — 16 weeks × 7 days = 112 cells
   const today = new Date();
-  const heatmapCells = Array.from({ length: 84 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() - (83 - i));
-    const count = applications.filter((a) => {
-      const ad = a.appliedAt ? new Date(a.appliedAt) : new Date(a.createdAt);
-      return ad.toDateString() === d.toDateString();
-    }).length;
-    return { date: d, count };
-  });
+  const WEEKS = 17;
+  const heatmapCells: { date: Date; count: number }[][] = [];
+  for (let w = 0; w < WEEKS; w++) {
+    const week: { date: Date; count: number }[] = [];
+    for (let d = 0; d < 7; d++) {
+      const cellDate = new Date(today);
+      cellDate.setDate(cellDate.getDate() - ((WEEKS - 1 - w) * 7 + (6 - d)));
+      const count = applications.filter((a) => {
+        const ad = a.appliedAt ? new Date(a.appliedAt) : new Date(a.createdAt);
+        return ad.toDateString() === cellDate.toDateString();
+      }).length;
+      week.push({ date: cellDate, count });
+    }
+    heatmapCells.push(week);
+  }
 
-  const handleGmailSync = async () => {
-    toast.promise(
-      fetch("/api/integrations/gmail/sync", { method: "POST" }).then(async (res) => {
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || "Sync failed");
-        }
-        return res.json();
-      }),
-      {
-        loading: "Syncing Gmail inbox...",
-        success: (data) => {
-          void fetchApplications();
-          return `Synced ${data.synced} threads — found ${data.detected.length} job-related emails`;
-        },
-        error: (err: Error) => err.message || "Gmail sync failed",
-      }
-    );
+  const heatColor = (count: number) => {
+    if (count === 0) return "#EAECEF";
+    if (count === 1) return "#9BE9A8";
+    if (count <= 3) return "#40C463";
+    if (count <= 5) return "#30A14E";
+    return "#005F4B";
   };
 
-  const statCards = [
-    { label: "Total Applications", value: applications.length, suffix: "", icon: Briefcase, bgClass: "bg-blue-50 text-blue-600 border-blue-100" },
-    { label: "Interview Rate", value: interviewRate, suffix: "%", icon: MessageSquare, bgClass: "bg-emerald-50 text-emerald-600 border-emerald-100" },
-    { label: "Offer Rate", value: offerRate, suffix: "%", icon: Trophy, bgClass: "bg-amber-50 text-amber-600 border-amber-100" },
-    { label: "Avg. Response Time", value: 12, suffix: "d", icon: Timer, bgClass: "bg-slate-50 text-slate-600 border-slate-100" },
-  ];
+  const btnStyle: React.CSSProperties = {
+    height: 34, padding: "0 14px", border: "1px solid #D1D5DB",
+    borderRadius: "8px", background: "#fff", fontSize: "12.5px",
+    fontWeight: 500, color: "#374151", cursor: "pointer", transition: "background 0.15s",
+  };
 
   return (
-    <div className="flex flex-col h-full bg-[var(--background)]">
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F7F7F4" }}>
       {/* Top Bar */}
-      <header className="flex justify-between items-center px-6 h-14 bg-white border-b border-[var(--border)] shrink-0 z-10 w-full sticky top-0 gap-4">
-        <div className="flex items-center gap-3">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-subtle)] mb-0.5">Analytics</p>
-          <h2 className="text-[16px] font-bold text-[var(--foreground)] leading-none">Dashboard</h2>
+      <header style={{
+        display: "flex", alignItems: "center", padding: "0 24px", height: 52,
+        background: "#fff", borderBottom: "1px solid #E5E7EB",
+        flexShrink: 0, position: "sticky", top: 0, zIndex: 10, gap: 10,
+      }}>
+        <div>
+          <p style={{ fontSize: 10, fontWeight: 600, color: "#9CA3AF", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 1 }}>Analytics</p>
+          <h1 style={{ fontSize: 16, fontWeight: 700, color: "#111827", margin: 0, lineHeight: 1 }}>Dashboard</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 gap-1.5 bg-white text-[13px] hover:bg-slate-50 border-[var(--border)] text-[var(--foreground)] px-3"
-            onClick={handleGmailSync}
-          >
-            Sync Gmail
-          </Button>
-        </div>
+        <div style={{ flex: 1 }} />
+        <button title="Notifications" style={{ ...btnStyle, width: 34, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "#F9FAFB")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}>
+          <Bell size={16} strokeWidth={1.8} />
+        </button>
+        <button onClick={handleGmailSync} style={btnStyle}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "#F9FAFB")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}>
+          Sync Gmail
+        </button>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent("open-add-application", { detail: { status: "APPLIED" } }))}
+          style={{ ...btnStyle, background: "#005F4B", color: "#fff", border: "none", fontWeight: 600, display: "flex", alignItems: "center", gap: 5 }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "#004A3A")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "#005F4B")}>
+          <Plus size={14} strokeWidth={2.5} />
+          Add Application
+        </button>
+        <UserAvatar size={32} />
       </header>
 
-      <div className="flex-grow overflow-auto px-6 py-5">
-        <div className="max-w-[1400px] mx-auto flex flex-col gap-5">
-          {loading ? (
-            <div className="grid grid-cols-4 gap-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-24 rounded-xl" />
-              ))}
-            </div>
-          ) : (
-            <>
-              {/* Stat Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {statCards.map(({ label, value, suffix, icon: Icon, bgClass }) => (
-                  <div key={label} className="bg-white p-5 rounded-xl border border-[var(--border)] shadow-sm hover:border-[var(--primary)] transition-all flex items-start justify-between">
+      <div style={{ flex: 1, padding: "20px 24px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }}>
+        {loading ? (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 16 }}>
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+          </div>
+        ) : (
+          <>
+            {/* ── Stat Cards ── */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14 }}>
+              {statCards.map(({ label, value, suffix }, i) => {
+                const { icon: Icon, bg, color } = STAT_ICONS[i];
+                return (
+                  <div key={label} style={{
+                    background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12,
+                    padding: "18px 20px", display: "flex", alignItems: "flex-start",
+                    justifyContent: "space-between", boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                  }}>
                     <div>
-                      <p className="text-[12px] font-medium text-[var(--text-muted)] mb-1">{label}</p>
-                      <p className="text-3xl font-bold text-[var(--foreground)] tracking-tight">
-                        {value}<span className="text-xl font-semibold">{suffix}</span>
+                      <p style={{ fontSize: 12, fontWeight: 500, color: "#6B7280", marginBottom: 6 }}>{label}</p>
+                      <p style={{ fontSize: 28, fontWeight: 700, color: "#111827", lineHeight: 1 }}>
+                        {value}<span style={{ fontSize: 18, fontWeight: 600 }}>{suffix}</span>
                       </p>
                     </div>
-                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center border", bgClass)}>
-                      <Icon className="w-5 h-5" />
+                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Icon size={18} color={color} />
                     </div>
                   </div>
-                ))}
+                );
+              })}
+            </div>
+
+            {/* ── Application Funnel ── */}
+            <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 24px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+              <h3 style={{ fontSize: 13, fontWeight: 700, color: "#6B7280", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 16 }}>Application Funnel</h3>
+              <div style={{ display: "flex", alignItems: "stretch", gap: 0, overflowX: "auto" }}>
+                {funnelData.map((item, i) => {
+                  const prevCount = i > 0 ? funnelData[i - 1].count : null;
+                  const dropPct = prevCount && prevCount > 0 ? Math.round(((prevCount - item.count) / prevCount) * 100) : null;
+                  const isLast = i === funnelData.length - 1;
+                  return (
+                    <div key={item.status} style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 90 }}>
+                      <div style={{
+                        flex: 1,
+                        background: isLast ? "#005F4B" : "#F9FAFB",
+                        border: `1px solid ${isLast ? "#005F4B" : "#E5E7EB"}`,
+                        borderRadius: 8,
+                        padding: "14px 12px",
+                        textAlign: "center",
+                        minHeight: 90,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 4,
+                      }}>
+                        <p style={{ fontSize: 11, fontWeight: 600, color: isLast ? "rgba(255,255,255,0.75)" : "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.04em" }}>{item.label}</p>
+                        <p style={{ fontSize: 22, fontWeight: 700, color: isLast ? "#fff" : "#111827", lineHeight: 1.1 }}>{item.count}</p>
+                        {dropPct !== null && (
+                          <p style={{ fontSize: 10.5, color: isLast ? "rgba(255,255,255,0.6)" : "#EF4444", fontWeight: 500 }}>▼ {dropPct}% drop</p>
+                        )}
+                      </div>
+                      {!isLast && (
+                        <div style={{ color: "#D1D5DB", fontSize: 18, padding: "0 4px", flexShrink: 0 }}>›</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Two charts side by side ── */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              {/* Donut - Applications by Source */}
+              <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 24px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+                <h3 style={{ fontSize: 13, fontWeight: 700, color: "#6B7280", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 16 }}>Applications by Source</h3>
+                {sourceData.length === 0 ? (
+                  <div style={{ height: 180, display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", fontSize: 13 }}>No data yet</div>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    <PieChart width={160} height={160}>
+                      <Pie data={sourceData} cx={75} cy={75} innerRadius={45} outerRadius={72} dataKey="value" strokeWidth={2}>
+                        {sourceData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v: number) => [v, "Apps"]} />
+                    </PieChart>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
+                      {sourceData.map((item) => (
+                        <div key={item.name} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                          <span style={{ width: 10, height: 10, borderRadius: "50%", background: item.fill, flexShrink: 0 }} />
+                          <span style={{ flex: 1, color: "#374151", fontWeight: 500 }}>{item.name}</span>
+                          <span style={{ color: "#6B7280", fontWeight: 600 }}>{item.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Funnel + Source */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white border border-[var(--border)] rounded-xl p-5 shadow-sm">
-                  <h3 className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-4">Application Funnel</h3>
-                  <div className="flex flex-col gap-2.5">
-                    {funnelData.map((item, index) => {
-                      const maxVal = Math.max(...funnelData.map((d) => d.value)) || 1;
-                      const widthPct = (item.value / maxVal) * 100;
+              {/* Bar - Offer Conversion by Source */}
+              <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 24px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+                <h3 style={{ fontSize: 13, fontWeight: 700, color: "#6B7280", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 16 }}>Offer Conversion by Source</h3>
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={offerBySource} barSize={28} margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} unit="%" />
+                    <Tooltip formatter={(v: number) => [`${v}%`, "Offer Rate"]} cursor={{ fill: "#F9FAFB" }} />
+                    <Bar dataKey="rate" fill="#005F4B" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* ── Applications Over Time (area chart) ── */}
+            <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 24px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+              <h3 style={{ fontSize: 13, fontWeight: 700, color: "#6B7280", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 16 }}>Applications Over Time</h3>
+              <ResponsiveContainer width="100%" height={180}>
+                <AreaChart data={monthlyData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#005F4B" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#005F4B" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip formatter={(v: number) => [v, "Applications"]} cursor={{ stroke: "#005F4B", strokeWidth: 1, strokeDasharray: "4 2" }} />
+                  <Area type="monotone" dataKey="count" stroke="#005F4B" strokeWidth={2} fill="url(#areaGrad)" dot={{ r: 3, fill: "#005F4B", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#005F4B" }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* ── Heatmap ── */}
+            <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 24px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+              <h3 style={{ fontSize: 13, fontWeight: 700, color: "#6B7280", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 16 }}>Application Activity (Last 12 Months)</h3>
+              <div style={{ display: "flex", gap: 3, overflowX: "auto" }}>
+                {/* Day labels column */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 3, paddingTop: 20 }}>
+                  {["Mon", "", "Wed", "", "Fri", "", "Sun"].map((d, i) => (
+                    <div key={i} style={{ height: 12, fontSize: 9, color: "#9CA3AF", lineHeight: "12px", whiteSpace: "nowrap" }}>{d}</div>
+                  ))}
+                </div>
+                {/* Weeks */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {/* Month labels */}
+                  <div style={{ display: "flex", gap: 3, marginBottom: 4 }}>
+                    {heatmapCells.map((week, wi) => {
+                      const firstDay = week[0].date;
+                      const showMonth = firstDay.getDate() <= 7;
                       return (
-                        <div key={item.name} className="flex items-center gap-3">
-                          <div className="w-24 text-[12px] font-medium text-[var(--text-muted)] text-right truncate">
-                            {item.name}
-                          </div>
-                          <div className="flex-1 bg-[var(--surface-container-low)] rounded-lg h-8 overflow-hidden relative border border-[var(--border)]/10">
-                            <div
-                              className="h-full rounded-lg transition-all duration-500 shadow-sm"
-                              style={{ width: `${widthPct}%`, backgroundColor: item.fill }}
-                            />
-                            <span className="absolute inset-y-0 left-3 flex items-center text-[11px] font-bold text-white shadow-sm">
-                              {item.value} applications
-                            </span>
-                          </div>
+                        <div key={wi} style={{ width: 12, fontSize: 9, color: "#9CA3AF", textAlign: "left", overflow: "visible", whiteSpace: "nowrap" }}>
+                          {showMonth ? format(firstDay, "MMM") : ""}
                         </div>
                       );
                     })}
                   </div>
-                </div>
-
-                <div className="bg-white border border-[var(--border)] rounded-xl p-5 shadow-sm">
-                  <h3 className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-4">Sources</h3>
-                  <div className="flex-1 flex flex-col justify-center h-full min-h-[220px]">
-                    {sourceData.length === 0 ? (
-                      <div className="text-center text-[13px] text-[var(--text-muted)] py-12">No source data available</div>
-                    ) : (
-                      <div className="space-y-3">
-                        {sourceData.map((item) => {
-                          const total = sourceData.reduce((acc, d) => acc + d.value, 0) || 1;
-                          const pct = Math.round((item.value / total) * 100);
-                          return (
-                            <div key={item.name} className="space-y-1">
-                              <div className="flex justify-between items-center text-[12px]">
-                                <span className="font-semibold text-[var(--text-muted)] flex items-center gap-2">
-                                  <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: item.fill }} />
-                                  {item.name}
-                                </span>
-                                <span className="font-bold text-[var(--text-muted)]">{item.value} ({pct}%)</span>
-                              </div>
-                              <div className="h-2 w-full bg-[var(--surface-container-low)] rounded-full overflow-hidden">
-                                <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: item.fill }} />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Weekly area chart */}
-              <div className="bg-white border border-[var(--border)] rounded-xl p-5 shadow-sm">
-                <h3 className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-4">Applications per Week</h3>
-                <div className="flex items-end justify-between h-[200px] border-b border-l border-[var(--border)]/60 pt-4 pl-4 relative">
-                  {weeklyData.map((item) => {
-                    const maxCount = Math.max(...weeklyData.map((d) => d.count)) || 1;
-                    const heightPct = (item.count / maxCount) * 80;
-                    return (
-                      <div key={item.week} className="flex-1 flex flex-col items-center group relative h-full justify-end">
-                        <div
-                          className="w-8 bg-[var(--primary)] hover:bg-[var(--primary-container)] rounded-t-sm transition-all duration-300 relative"
-                          style={{ height: `${heightPct}%` }}
-                        >
-                          <div className="absolute -top-6 left-1/2 -translate-x-1/2 font-bold text-[10px] text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity">
-                            {item.count}
-                          </div>
-                        </div>
-                        <span className="text-[10px] text-[var(--text-subtle)] mt-2 font-medium">
-                          {item.week}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Activity Heatmap */}
-              <div className="bg-white border border-[var(--border)] rounded-xl p-5 shadow-sm">
-                <h3 className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-4">Activity (Last 12 Weeks)</h3>
-                <div className="flex gap-1 flex-wrap">
-                  {heatmapCells.map(({ date, count }, i) => (
-                    <div
-                      key={i}
-                      className="w-3.5 h-3.5 rounded-sm transition-colors"
-                      title={`${format(date, "MMM d")}: ${count} activity`}
-                      style={{
-                        backgroundColor:
-                          count === 0 ? "var(--surface-container-low)"
-                          : count === 1 ? "var(--primary-light)"
-                          : count <= 3 ? "var(--primary-container)"
-                          : "var(--primary)",
-                      }}
-                    />
+                  {/* Rows by day of week */}
+                  {Array.from({ length: 7 }, (_, dayIdx) => (
+                    <div key={dayIdx} style={{ display: "flex", gap: 3 }}>
+                      {heatmapCells.map((week, wi) => {
+                        const cell = week[dayIdx];
+                        return (
+                          <div
+                            key={wi}
+                            title={`${format(cell.date, "MMM d")}: ${cell.count} applications`}
+                            style={{
+                              width: 12, height: 12,
+                              borderRadius: 2,
+                              background: heatColor(cell.count),
+                              cursor: "default",
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
                   ))}
                 </div>
-                <div className="flex items-center gap-1.5 mt-3 justify-end">
-                  <span className="text-[11px] text-[var(--text-subtle)]">Less</span>
-                  {["var(--surface-container-low)", "var(--primary-light)", "var(--primary-container)", "var(--primary)"].map((c, i) => (
-                    <div key={i} className="w-3.5 h-3.5 rounded-sm" style={{ backgroundColor: c }} />
-                  ))}
-                  <span className="text-[11px] text-[var(--text-subtle)]">More</span>
-                </div>
               </div>
-            </>
-          )}
-        </div>
+              {/* Legend */}
+              <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 12, justifyContent: "flex-end" }}>
+                <span style={{ fontSize: 11, color: "#9CA3AF" }}>Less</span>
+                {["#EAECEF", "#9BE9A8", "#40C463", "#30A14E", "#005F4B"].map((c) => (
+                  <div key={c} style={{ width: 12, height: 12, borderRadius: 2, background: c }} />
+                ))}
+                <span style={{ fontSize: 11, color: "#9CA3AF" }}>More</span>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

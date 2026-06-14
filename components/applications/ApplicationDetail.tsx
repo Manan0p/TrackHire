@@ -91,7 +91,7 @@ export function ApplicationDetail({ application, open, onClose, onUpdate }: Appl
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-full sm:w-[600px] sm:max-w-[600px] p-0 overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:w-[580px] sm:max-w-[580px] p-0 overflow-y-auto">
         {!current ? (
           <div className="p-6 space-y-4">
             <Skeleton className="h-8 w-3/4" />
@@ -100,65 +100,78 @@ export function ApplicationDetail({ application, open, onClose, onUpdate }: Appl
         ) : (
           <>
             {/* Header */}
-            <div className="sticky top-0 bg-[var(--surface)] border-b border-[var(--border)] px-6 py-4 z-10">
-              <div className="flex items-start gap-3">
-                <CompanyLogo company={current.company} size={40} />
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-base font-bold text-[var(--foreground)] leading-tight">
-                    {current.company}
-                  </h2>
-                  <p className="text-sm text-[var(--text-muted)] mt-0.5 truncate">
+            <div style={{
+              position: "sticky", top: 0, zIndex: 10,
+              background: "#ffffff", borderBottom: "1px solid #E5E7EB",
+              padding: "20px 24px",
+            }}>
+              {/* Top row: Logo + role + close */}
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                <CompanyLogo company={current.company} size={44} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h2 style={{ fontSize: 17, fontWeight: 700, color: "#111827", lineHeight: 1.2, margin: 0 }}>
                     {current.role}
+                  </h2>
+                  <p style={{ fontSize: 13, color: "#6B7280", marginTop: 3 }}>
+                    {current.company}
                   </p>
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                    {/* Status dropdown */}
+                    <Select
+                      value={current.status}
+                      onValueChange={(v) => handleStatusChange(v as AppStatus)}
+                      disabled={updating}
+                    >
+                      <SelectTrigger style={{
+                        height: 28, fontSize: 12, fontWeight: 600,
+                        border: "1px solid #E5E7EB", borderRadius: 6,
+                        padding: "0 8px", background: "#F0F9F6", color: "#005F4B",
+                        width: "auto", minWidth: 110,
+                      }}>
+                        <SelectValue>
+                          <StatusBadge status={current.status} size="sm" />
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ALL_STATUSES.map((s) => (
+                          <SelectItem key={s} value={s} className="text-[13px]">
+                            <StatusBadge status={s} size="sm" />
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {/* Source badge */}
                     <SourceBadge source={current.source} />
+                    {/* Job link */}
                     {current.jobUrl && (
                       <a
                         href={current.jobUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[11px] text-[var(--primary)] hover:underline"
+                        style={{ fontSize: 12, color: "#005F4B", display: "flex", alignItems: "center", gap: 4, textDecoration: "none" }}
+                        onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.textDecoration = "underline")}
+                        onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.textDecoration = "none")}
                       >
-                        <ExternalLink className="w-3 h-3" />
-                        Job Link
+                        <ExternalLink size={12} />
+                        View Job Posting
                       </a>
                     )}
                   </div>
                 </div>
-                <Select
-                  value={current.status}
-                  onValueChange={(v) => handleStatusChange(v as AppStatus)}
-                  disabled={updating}
-                >
-                  <SelectTrigger className="w-36 h-8 text-[13px]">
-                    <SelectValue>
-                      <StatusBadge status={current.status} size="sm" />
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ALL_STATUSES.map((s) => (
-                      <SelectItem key={s} value={s} className="text-[13px]">
-                        <StatusBadge status={s} size="sm" />
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
 
               {/* Quick stats */}
-              <div className="flex flex-wrap gap-3 mt-3 text-[11px] text-[var(--text-muted)]">
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 14, fontSize: 11, color: "#9CA3AF" }}>
                 {current.appliedAt && (
                   <span>Applied {formatDate(current.appliedAt)}</span>
                 )}
                 {(current.salaryMin || current.salaryMax) && (
-                  <span>
-                    {formatSalary(current.salaryMin, current.salaryMax, current.currency)}
-                  </span>
+                  <span>{formatSalary(current.salaryMin, current.salaryMax, current.currency)}</span>
                 )}
-                {current.tags.length > 0 && (
-                  <div className="flex items-center gap-1">
-                    <Tag className="w-3 h-3" />
-                    {current.tags.slice(0, 3).join(", ")}
+                {(current.tags?.length ?? 0) > 0 && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <Tag size={10} />
+                    {current.tags?.slice(0, 3).join(", ")}
                   </div>
                 )}
               </div>
@@ -232,13 +245,13 @@ export function ApplicationDetail({ application, open, onClose, onUpdate }: Appl
                     )}
 
                     {/* Email threads */}
-                    {current.emails.length > 0 && (
+                    {(current.emails?.length ?? 0) > 0 && (
                       <div>
                         <p className="text-[12px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-2">
                           Email Threads
                         </p>
                         <div className="space-y-2">
-                          {current.emails.map((email) => (
+                          {current.emails?.map((email) => (
                             <div key={email.id} className="p-3 border border-[var(--border)] rounded-lg">
                               <p className="text-[13px] font-medium">{email.subject}</p>
                               {email.snippet && (
@@ -297,13 +310,13 @@ export function ApplicationDetail({ application, open, onClose, onUpdate }: Appl
                     </div>
 
                     {/* Status History */}
-                    {current.statusHistory.length > 0 && (
+                    {(current.statusHistory?.length ?? 0) > 0 && (
                       <div>
                         <label className="text-[12px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-2 block">
                           Status History
                         </label>
                         <div className="space-y-1">
-                          {current.statusHistory.slice(0, 6).map((h) => (
+                          {current.statusHistory?.slice(0, 6).map((h) => (
                             <div key={h.id} className="flex items-center gap-2 text-[12px]">
                               <span className="text-[var(--text-subtle)]">{formatDate(h.changedAt)}</span>
                               <span className="text-[var(--text-muted)]">→</span>

@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, startOfWeek, endOfWeek } from "date-fns";
 import { ApplicationDetail } from "@/components/applications/ApplicationDetail";
-import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { EVENT_TYPE_COLORS, EVENT_TYPE_LABELS } from "@/types";
 import { toast } from "sonner";
@@ -64,41 +63,61 @@ export default function CalendarPage() {
   const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   return (
-    <div className="flex flex-col h-full bg-[var(--background)]">
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F7F7F4" }}>
       {/* Top Bar */}
-      <header className="flex justify-between items-center px-6 h-14 bg-white border-b border-[var(--border)] shrink-0 z-10 w-full sticky top-0 gap-4">
-        <div className="flex items-center gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-subtle)]">Schedule</p>
-          <h2 className="text-[16px] font-bold text-[var(--foreground)] leading-none">Calendar</h2>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-8 w-8 p-0 border-[var(--border)] bg-white" onClick={() => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}>
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <span className="text-[13px] font-semibold w-32 text-center text-[var(--foreground)]">
+      <header style={{
+        display: "flex", alignItems: "center", padding: "0 24px", height: 52,
+        background: "#fff", borderBottom: "1px solid #E5E7EB", flexShrink: 0,
+        position: "sticky", top: 0, zIndex: 10, gap: 12,
+      }}>
+        <h1 style={{ fontSize: 16, fontWeight: 700, color: "#111827", margin: 0 }}>Calendar</h1>
+        <div style={{ flex: 1 }} />
+        {/* Month navigation */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <button
+            onClick={() => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
+            style={{ width: 32, height: 32, border: "1px solid #E5E7EB", borderRadius: 6, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#374151" }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "#F9FAFB")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#111827", width: 130, textAlign: "center" }}>
             {format(currentDate, "MMMM yyyy")}
           </span>
-          <Button variant="outline" size="sm" className="h-8 w-8 p-0 border-[var(--border)] bg-white" onClick={() => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}>
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-          <Button variant="outline" size="sm" className="h-8 text-[12px] border-[var(--border)] bg-white px-3" onClick={() => setCurrentDate(new Date())}>
+          <button
+            onClick={() => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
+            style={{ width: 32, height: 32, border: "1px solid #E5E7EB", borderRadius: 6, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#374151" }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "#F9FAFB")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
+          >
+            <ChevronRight size={16} />
+          </button>
+          <button
+            onClick={() => setCurrentDate(new Date())}
+            style={{ height: 32, padding: "0 14px", border: "1px solid #E5E7EB", borderRadius: 6, background: "#fff", fontSize: 12.5, fontWeight: 500, color: "#374151", cursor: "pointer", marginLeft: 4 }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "#F9FAFB")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
+          >
             Today
-          </Button>
+          </button>
         </div>
       </header>
 
-      <div className="flex-grow overflow-auto px-6 py-5">
+      <div style={{ flex: 1, padding: "16px 24px", overflow: "auto" }}>
         {/* Day headers */}
-        <div className="grid grid-cols-7 mb-2">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 6 }}>
           {dayNames.map((d) => (
-            <div key={d} className="text-[11px] font-semibold text-[var(--text-muted)] text-center pb-2">
-              {d}
-            </div>
+            <div key={d} style={{ textAlign: "center", fontSize: 11, fontWeight: 600, color: "#6B7280", padding: "0 0 8px" }}>{d}</div>
           ))}
         </div>
 
         {/* Calendar grid */}
-        <div className="grid grid-cols-7 gap-px bg-[var(--border)] rounded-xl overflow-hidden border border-[var(--border)]">
+        <div style={{
+          display: "grid", gridTemplateColumns: "repeat(7, 1fr)",
+          border: "1px solid #E5E7EB", borderRadius: 10, overflow: "hidden",
+          background: "#E5E7EB", gap: "1px",
+        }}>
           {days.map((day) => {
             const dayEvents = getEventsForDay(day);
             const isCurrentMonth = day.getMonth() === currentDate.getMonth();
@@ -107,19 +126,40 @@ export default function CalendarPage() {
             return (
               <div
                 key={day.toISOString()}
-                className={`min-h-[120px] bg-[var(--surface)] p-2 ${!isCurrentMonth ? "opacity-40" : ""}`}
+                style={{
+                  minHeight: 110,
+                  background: "#ffffff",
+                  padding: "8px",
+                  opacity: isCurrentMonth ? 1 : 0.4,
+                }}
               >
-                <div className={`w-6 h-6 flex items-center justify-center rounded-full text-[12px] font-medium mb-1 ${
-                  isTodayDate ? "bg-[var(--primary)] text-white" : "text-[var(--text-muted)]"
-                }`}>
+                <div style={{
+                  width: 24, height: 24,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  borderRadius: "50%",
+                  fontSize: 12, fontWeight: 500,
+                  marginBottom: 4,
+                  background: isTodayDate ? "#005F4B" : "transparent",
+                  color: isTodayDate ? "#ffffff" : "#374151",
+                }}>
                   {format(day, "d")}
                 </div>
-                <div className="space-y-0.5">
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                   {dayEvents.slice(0, 3).map((evt) => (
                     <button
                       key={evt.id}
-                      className="w-full text-left px-1.5 py-0.5 rounded text-[10px] font-medium truncate hover:opacity-80 transition-opacity"
                       style={{
+                        width: "100%",
+                        textAlign: "left",
+                        padding: "2px 6px",
+                        borderRadius: 4,
+                        fontSize: 10,
+                        fontWeight: 500,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        border: "none",
+                        cursor: "pointer",
                         backgroundColor: `${EVENT_TYPE_COLORS[evt.type as keyof typeof EVENT_TYPE_COLORS]}25`,
                         color: EVENT_TYPE_COLORS[evt.type as keyof typeof EVENT_TYPE_COLORS],
                       }}
@@ -132,7 +172,7 @@ export default function CalendarPage() {
                     </button>
                   ))}
                   {dayEvents.length > 3 && (
-                    <div className="text-[10px] text-[var(--text-subtle)] pl-1">
+                    <div style={{ fontSize: 10, color: "#9CA3AF", paddingLeft: 4 }}>
                       +{dayEvents.length - 3} more
                     </div>
                   )}

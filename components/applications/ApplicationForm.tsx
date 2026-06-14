@@ -3,11 +3,6 @@
 import { useState } from "react";
 import { Source, AppStatus } from "@prisma/client";
 import { SOURCE_LABELS, STATUS_LABELS } from "@/types";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { ApplicationWithRelations } from "@/types";
@@ -19,6 +14,83 @@ interface ApplicationFormProps {
   defaultStatus?: AppStatus;
   onSuccess: (app: ApplicationWithRelations) => void;
   onCancel: () => void;
+}
+
+const inputBase: React.CSSProperties = {
+  width: "100%",
+  height: "40px",
+  padding: "0 12px",
+  border: "1px solid #D1D5DB",
+  borderRadius: "6px",
+  fontSize: "13px",
+  color: "#111827",
+  background: "#ffffff",
+  outline: "none",
+  boxSizing: "border-box",
+  transition: "border-color 0.15s, box-shadow 0.15s",
+  WebkitAppearance: "none",
+};
+
+const labelBase: React.CSSProperties = {
+  display: "block",
+  fontSize: "12px",
+  fontWeight: 600,
+  color: "#374151",
+  marginBottom: "5px",
+};
+
+function Field({ label, children, error }: { label: string; children: React.ReactNode; error?: string }) {
+  return (
+    <div>
+      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>{label}</label>
+      {children}
+      {error && <p style={{ fontSize: 11, color: "#EF4444", marginTop: 3 }}>{error}</p>}
+    </div>
+  );
+}
+
+function StyledInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <div suppressHydrationWarning style={{ position: "relative" }}>
+      <input
+        {...props}
+        autoComplete="off"
+        data-form-type="other"
+        style={{
+          ...inputBase,
+          borderColor: focused ? "#005F4B" : "#D1D5DB",
+          boxShadow: focused ? "0 0 0 3px rgba(0,95,75,0.08)" : "none",
+          paddingRight: "12px",
+          ...props.style,
+        }}
+        onFocus={(e) => { setFocused(true); props.onFocus?.(e); }}
+        onBlur={(e) => { setFocused(false); props.onBlur?.(e); }}
+      />
+    </div>
+  );
+}
+
+function StyledSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <select
+      {...props}
+      style={{
+        ...inputBase,
+        height: "40px",
+        paddingRight: "28px",
+        cursor: "pointer",
+        appearance: "auto",
+        borderColor: focused ? "#005F4B" : "#D1D5DB",
+        boxShadow: focused ? "0 0 0 3px rgba(0,95,75,0.08)" : "none",
+      }}
+      onFocus={(e) => { setFocused(true); props.onFocus?.(e); }}
+      onBlur={(e) => { setFocused(false); props.onBlur?.(e); }}
+    >
+      {props.children}
+    </select>
+  );
 }
 
 export function ApplicationForm({ defaultStatus = "APPLIED", onSuccess, onCancel }: ApplicationFormProps) {
@@ -36,6 +108,7 @@ export function ApplicationForm({ defaultStatus = "APPLIED", onSuccess, onCancel
   const [appliedAt, setAppliedAt] = useState("");
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [notesFocused, setNotesFocused] = useState(false);
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -92,91 +165,202 @@ export function ApplicationForm({ defaultStatus = "APPLIED", onSuccess, onCancel
     }
   };
 
-  const field = (label: string, children: React.ReactNode, error?: string) => (
-    <div className="space-y-1.5">
-      <Label className="text-[13px] font-medium text-[var(--foreground)]">{label}</Label>
-      {children}
-      {error && <p className="text-[11px] text-red-500">{error}</p>}
-    </div>
-  );
+  const gap = 14;
+  const rowStyle: React.CSSProperties = { display: "grid", gap };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <div className="grid grid-cols-2 gap-4">
-        {field("Company *",
-          <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Google, Stripe…" className="h-10 text-[13px]" />,
-          errors.company
-        )}
-        {field("Role *",
-          <Input value={role} onChange={(e) => setRole(e.target.value)} placeholder="Software Engineer" className="h-10 text-[13px]" />,
-          errors.role
-        )}
+    <form onSubmit={handleSubmit} autoComplete="off" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+      {/* Row 1: Company | Role */}
+      <div style={{ ...rowStyle, gridTemplateColumns: "1fr 1fr" }}>
+        <Field label="Company *" error={errors.company}>
+          <StyledInput
+            value={company}
+            onChange={(e) => setCompany(e.target.value)}
+            placeholder="Google, Stripe…"
+            autoComplete="off"
+          />
+        </Field>
+        <Field label="Role *" error={errors.role}>
+          <StyledInput
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            placeholder="Software Engineer"
+            autoComplete="off"
+          />
+        </Field>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        {field("Source *",
-          <Select value={source} onValueChange={(v) => setSource(v as Source)}>
-            <SelectTrigger className="h-10 w-full text-[13px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {SOURCES.map((s) => <SelectItem key={s} value={s} className="text-[13px]">{SOURCE_LABELS[s]}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        )}
-        {field("Status",
-          <Select value={status} onValueChange={(v) => setStatus(v as AppStatus)}>
-            <SelectTrigger className="h-10 w-full text-[13px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {STATUSES.map((s) => <SelectItem key={s} value={s} className="text-[13px]">{STATUS_LABELS[s]}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        )}
+      {/* Row 2: Source | Status */}
+      <div style={{ ...rowStyle, gridTemplateColumns: "1fr 1fr" }}>
+        <Field label="Source">
+          <StyledSelect value={source} onChange={(e) => setSource(e.target.value as Source)}>
+            {SOURCES.map((s) => <option key={s} value={s}>{SOURCE_LABELS[s]}</option>)}
+          </StyledSelect>
+        </Field>
+        <Field label="Status">
+          <StyledSelect value={status} onChange={(e) => setStatus(e.target.value as AppStatus)}>
+            {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+          </StyledSelect>
+        </Field>
       </div>
 
-      {field("Job URL",
-        <Input value={jobUrl} onChange={(e) => setJobUrl(e.target.value)} placeholder="https://careers.company.com/…" className="h-10 text-[13px]" />
-      )}
+      {/* Job URL */}
+      <Field label="Job URL">
+        <StyledInput
+          type="url"
+          value={jobUrl}
+          onChange={(e) => setJobUrl(e.target.value)}
+          placeholder="https://careers.company.com/…"
+          autoComplete="off"
+        />
+      </Field>
 
-      <div className="grid grid-cols-2 gap-4">
-        {field("Recruiter Name",
-          <Input value={recruiterName} onChange={(e) => setRecruiterName(e.target.value)} placeholder="Sarah Johnson" className="h-10 text-[13px]" />
-        )}
-        {field("Recruiter Email",
-          <Input type="email" value={recruiterEmail} onChange={(e) => setRecruiterEmail(e.target.value)} placeholder="sarah@co.com" className="h-10 text-[13px]" />
-        )}
+      {/* Row 3: Recruiter Name | Recruiter Email */}
+      <div style={{ ...rowStyle, gridTemplateColumns: "1fr 1fr" }} suppressHydrationWarning>
+        <Field label="Recruiter Name">
+          <StyledInput
+            value={recruiterName}
+            onChange={(e) => setRecruiterName(e.target.value)}
+            placeholder="Sarah Johnson"
+            autoComplete="off"
+            data-form-type="other"
+          />
+        </Field>
+        <Field label="Recruiter Email">
+          <div suppressHydrationWarning>
+            <StyledInput
+              type="text"
+              inputMode="email"
+              value={recruiterEmail}
+              onChange={(e) => setRecruiterEmail(e.target.value)}
+              placeholder="sarah@co.com"
+              autoComplete="off"
+              data-form-type="other"
+              style={{ WebkitTextSecurity: undefined }}
+            />
+          </div>
+        </Field>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        {field("Min Salary",
-          <Input type="number" value={salaryMin} onChange={(e) => setSalaryMin(e.target.value)} placeholder="1200000" className="h-10 text-[13px]" />
-        )}
-        {field("Max Salary",
-          <Input type="number" value={salaryMax} onChange={(e) => setSalaryMax(e.target.value)} placeholder="1800000" className="h-10 text-[13px]" />
-        )}
-        {field("Currency",
-          <Select value={currency} onValueChange={(v: string | null) => { if (v) setCurrency(v); }}>
-            <SelectTrigger className="h-10 w-full text-[13px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {["INR", "USD", "GBP", "EUR"].map((c) => <SelectItem key={c} value={c} className="text-[13px]">{c}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        )}
+      {/* Row 4: Min Salary | Max Salary | Currency */}
+      <div style={{ ...rowStyle, gridTemplateColumns: "1fr 1fr 100px" }}>
+        <Field label="Min Salary">
+          <StyledInput
+            type="number"
+            value={salaryMin}
+            onChange={(e) => setSalaryMin(e.target.value)}
+            placeholder="1200000"
+            autoComplete="off"
+          />
+        </Field>
+        <Field label="Max Salary">
+          <StyledInput
+            type="number"
+            value={salaryMax}
+            onChange={(e) => setSalaryMax(e.target.value)}
+            placeholder="1800000"
+            autoComplete="off"
+          />
+        </Field>
+        <Field label="Currency">
+          <StyledSelect value={currency} onChange={(e) => setCurrency(e.target.value)}>
+            {["INR", "USD", "GBP", "EUR"].map((c) => <option key={c} value={c}>{c}</option>)}
+          </StyledSelect>
+        </Field>
       </div>
 
-      {field("Applied Date",
-        <Input type="date" value={appliedAt} onChange={(e) => setAppliedAt(e.target.value)} className="h-10 text-[13px]" />
-      )}
+      {/* Applied Date */}
+      <Field label="Applied Date">
+        <StyledInput
+          type="date"
+          value={appliedAt}
+          onChange={(e) => setAppliedAt(e.target.value)}
+        />
+      </Field>
 
-      {field("Notes",
-        <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any notes…" className="text-[13px] min-h-[80px] resize-none" />
-      )}
+      {/* Notes */}
+      <Field label="Notes">
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Any notes…"
+          rows={3}
+          onFocus={() => setNotesFocused(true)}
+          onBlur={() => setNotesFocused(false)}
+          style={{
+            width: "100%",
+            padding: "10px 12px",
+            border: `1px solid ${notesFocused ? "#005F4B" : "#D1D5DB"}`,
+            borderRadius: "6px",
+            fontSize: "13px",
+            color: "#111827",
+            background: "#ffffff",
+            outline: "none",
+            boxSizing: "border-box",
+            resize: "vertical",
+            fontFamily: "inherit",
+            boxShadow: notesFocused ? "0 0 0 3px rgba(0,95,75,0.08)" : "none",
+            transition: "border-color 0.15s, box-shadow 0.15s",
+          }}
+        />
+      </Field>
 
-      <div className="flex gap-3 pt-2">
-        <Button type="submit" disabled={loading} className="flex-1 h-10 text-[13px] bg-[var(--primary)] hover:bg-[var(--primary-dark)]">
-          {loading && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
+      {/* Submit row */}
+      <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            flex: 1,
+            height: 40,
+            background: loading ? "#4A9080" : "#005F4B",
+            color: "#ffffff",
+            border: "none",
+            borderRadius: "8px",
+            fontSize: "13px",
+            fontWeight: 600,
+            cursor: loading ? "not-allowed" : "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            transition: "background 0.15s",
+          }}
+          onMouseEnter={(e) => { if (!loading) e.currentTarget.style.background = "#004A3A"; }}
+          onMouseLeave={(e) => { if (!loading) e.currentTarget.style.background = "#005F4B"; }}
+        >
+          {loading && <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} />}
           Add Application
-        </Button>
-        <Button type="button" variant="outline" className="h-10 px-6 text-[13px]" onClick={onCancel}>Cancel</Button>
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          style={{
+            height: 40,
+            padding: "0 20px",
+            background: "transparent",
+            color: "#6B7280",
+            border: "1px solid #D1D5DB",
+            borderRadius: "8px",
+            fontSize: "13px",
+            fontWeight: 500,
+            cursor: "pointer",
+            transition: "all 0.15s",
+            flexShrink: 0,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "#F9FAFB"; e.currentTarget.style.color = "#374151"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#6B7280"; }}
+        >
+          Cancel
+        </button>
       </div>
+
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        input[data-form-type="other"]::-webkit-credentials-auto-fill-button { visibility: hidden; position: absolute; right: 0; }
+        input[data-form-type="other"]::-webkit-textfield-decoration-container { visibility: hidden; }
+      `}</style>
     </form>
   );
 }

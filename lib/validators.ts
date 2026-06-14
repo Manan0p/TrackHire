@@ -80,7 +80,7 @@ export const listApplicationsSchema = z.object({
   search: z.string().optional(),
   tags: z.array(z.string()).optional(),
   page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(50),
+  limit: z.coerce.number().int().min(1).max(1000).default(50),
 });
 
 export type CreateApplicationInput = z.infer<typeof createApplicationSchema>;

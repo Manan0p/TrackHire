@@ -2,13 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Label } from "@/components/ui/label";
 import {
   User, Mail, FileText, Download, Trash2,
   Loader2, CheckCircle2, RefreshCw, Calendar, AlertCircle,
@@ -28,6 +21,144 @@ interface UserProfile {
   gmailLastSyncedAt?: string | null;
 }
 
+// ─── Reusable styled primitives ───────────────────────────────────────────────
+
+function SectionCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      background: "#ffffff",
+      border: "1px solid #E5E7EB",
+      borderRadius: 10,
+      padding: "24px",
+      display: "flex",
+      flexDirection: "column",
+      gap: 20,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 4, borderBottom: "1px solid #F3F4F6" }}>
+      <div style={{ width: 32, height: 32, borderRadius: 8, background: "#F0F9F6", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <Icon size={16} color="#005F4B" />
+      </div>
+      <h2 style={{ fontSize: 16, fontWeight: 700, color: "#111827", margin: 0 }}>{title}</h2>
+    </div>
+  );
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+      {children}
+    </label>
+  );
+}
+
+function StyledInput({ value, onChange, placeholder, disabled }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; disabled?: boolean;
+}) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      disabled={disabled}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      style={{
+        width: "100%", height: 40, padding: "0 12px",
+        border: `1px solid ${focused ? "#005F4B" : "#D1D5DB"}`,
+        borderRadius: 6, fontSize: 13, color: "#111827",
+        background: disabled ? "#F9FAFB" : "#fff",
+        outline: "none", boxSizing: "border-box",
+        boxShadow: focused ? "0 0 0 3px rgba(0,95,75,0.08)" : "none",
+        transition: "border-color 0.15s, box-shadow 0.15s",
+      }}
+    />
+  );
+}
+
+function TealButton({
+  onClick, disabled, loading, children, size = "md",
+}: {
+  onClick: () => void; disabled?: boolean; loading?: boolean;
+  children: React.ReactNode; size?: "sm" | "md";
+}) {
+  const [hovered, setHovered] = useState(false);
+  const h = size === "sm" ? 34 : 40;
+  const px = size === "sm" ? 16 : 20;
+  const fs = size === "sm" ? 12.5 : 13;
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled || loading}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        height: h, padding: `0 ${px}px`,
+        background: (disabled || loading) ? "#9CA3AF" : hovered ? "#004A3A" : "#005F4B",
+        color: "#fff", border: "none", borderRadius: 6,
+        fontSize: fs, fontWeight: 600,
+        cursor: (disabled || loading) ? "not-allowed" : "pointer",
+        display: "flex", alignItems: "center", gap: 6,
+        flexShrink: 0, whiteSpace: "nowrap",
+        transition: "background 0.15s",
+      }}
+    >
+      {loading && <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />}
+      {children}
+    </button>
+  );
+}
+
+function OutlineButton({
+  onClick, disabled, loading, children, danger = false, size = "sm",
+}: {
+  onClick: () => void; disabled?: boolean; loading?: boolean;
+  children: React.ReactNode; danger?: boolean; size?: "sm" | "md";
+}) {
+  const [hovered, setHovered] = useState(false);
+  const borderColor = danger ? "#DC2626" : "#D1D5DB";
+  const textColor = danger ? "#DC2626" : "#374151";
+  const hoverBg = danger ? "#DC2626" : "#F9FAFB";
+  const hoverText = danger ? "#fff" : "#111827";
+  const h = size === "sm" ? 34 : 40;
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled || loading}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        height: h, padding: "0 16px",
+        background: hovered ? hoverBg : "#fff",
+        color: hovered ? hoverText : textColor,
+        border: `1px solid ${borderColor}`,
+        borderRadius: 6, fontSize: 12.5, fontWeight: 500,
+        cursor: disabled ? "not-allowed" : "pointer",
+        display: "flex", alignItems: "center", gap: 6,
+        flexShrink: 0, whiteSpace: "nowrap",
+        transition: "all 0.15s",
+      }}
+    >
+      {loading && <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} />}
+      {children}
+    </button>
+  );
+}
+
+function Divider() {
+  return <div style={{ height: 1, background: "#F3F4F6", margin: "4px 0" }} />;
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function SettingsPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,6 +166,7 @@ export default function SettingsPage() {
   const [syncing, setSyncing] = useState(false);
   const [resumeText, setResumeText] = useState("");
   const [name, setName] = useState("");
+  const [textareaFocused, setTextareaFocused] = useState(false);
 
   useEffect(() => {
     fetch("/api/user/profile")
@@ -71,13 +203,7 @@ export default function SettingsPage() {
       const res = await fetch("/api/integrations/gmail/sync", { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
-        if (res.status === 401) {
-          toast.error(data.error || "Please re-authenticate with Google");
-        } else if (res.status === 429) {
-          toast.error(data.error);
-        } else {
-          toast.error("Gmail sync failed");
-        }
+        toast.error(data.error || "Gmail sync failed");
         return;
       }
       const { detected, synced } = data;
@@ -90,7 +216,6 @@ export default function SettingsPage() {
     }
   };
 
-  // Re-authenticate with Google to grant Calendar access
   const handleGrantCalendarAccess = () => {
     signIn("google", { callbackUrl: "/settings" }, { scope: GOOGLE_SCOPES });
   };
@@ -112,212 +237,262 @@ export default function SettingsPage() {
     }
   };
 
+  const initials = getInitials(profile?.name || profile?.email || "U");
+
+  // ─── Loading skeleton ───────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex flex-col h-full">
-        <div className="flex items-center justify-between px-6 py-3 h-14 border-b border-[var(--border)] bg-white sticky top-0 z-10">
+      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        <header style={{
+          display: "flex", alignItems: "center", padding: "0 40px", height: 60,
+          background: "#fff", borderBottom: "1px solid #E5E7EB", flexShrink: 0,
+        }}>
           <div>
-            <h1 className="text-[16px] font-bold text-[var(--foreground)] leading-none">Settings</h1>
-            <p className="text-[11px] text-[var(--text-muted)] mt-0.5">Manage your profile and preferences</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: "#9CA3AF", letterSpacing: "0.05em", textTransform: "uppercase", margin: 0 }}>Account</p>
+            <h1 style={{ fontSize: 24, fontWeight: 700, color: "#111827", margin: 0, lineHeight: 1.2 }}>Settings</h1>
           </div>
-        </div>
-        <div className="flex-1 overflow-auto px-6 py-6">
-          <div className="max-w-2xl mx-auto space-y-6">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-32 rounded-xl" />
+        </header>
+        <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px" }}>
+          <div style={{ maxWidth: 700, display: "flex", flexDirection: "column", gap: 16 }}>
+            {[120, 200, 160, 120].map((h, i) => (
+              <div key={i} style={{ height: h, background: "#F3F4F6", borderRadius: 10, animation: "pulse 1.5s ease-in-out infinite" }} />
             ))}
           </div>
         </div>
+        <style>{`@keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.5 } } @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
+  // ─── Main render ───────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-6 h-14 border-b border-[var(--border)] bg-white sticky top-0 z-10 gap-4">
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F7F7F4" }}>
+      {/* Top Bar */}
+      <header style={{
+        display: "flex", alignItems: "center",
+        padding: "0 40px", height: 60,
+        background: "#fff", borderBottom: "1px solid #E5E7EB",
+        flexShrink: 0, position: "sticky", top: 0, zIndex: 10,
+      }}>
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-subtle)] mb-0.5">Account</p>
-          <h1 className="text-[16px] font-bold text-[var(--foreground)] leading-none">Settings</h1>
+          <p style={{ fontSize: 11, fontWeight: 600, color: "#9CA3AF", letterSpacing: "0.05em", textTransform: "uppercase", margin: 0 }}>Account</p>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: "#111827", margin: 0, lineHeight: 1.2 }}>Settings</h1>
         </div>
-      </div>
+      </header>
 
-      <div className="flex-1 overflow-auto px-6 py-6">
-        <div className="max-w-2xl mx-auto space-y-8">
+      {/* Content */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px" }}>
+        <div style={{ maxWidth: 700, display: "flex", flexDirection: "column", gap: 16 }}>
 
-          {/* ── Profile ───────────────────────────────────────────────────── */}
-          <section>
-            <h2 className="text-[14px] font-semibold mb-4 flex items-center gap-2">
-              <User className="w-4 h-4 text-[var(--primary)]" />
-              Profile
-            </h2>
-            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 space-y-4">
-              <div className="flex items-center gap-4">
-                <Avatar className="w-12 h-12">
-                  <AvatarImage src={profile?.image || undefined} />
-                  <AvatarFallback className="bg-[var(--primary-light)] text-[var(--primary)] font-semibold">
-                    {getInitials(profile?.name || profile?.email || "U")}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="text-[14px] font-medium">{profile?.name || "No name"}</p>
-                  <p className="text-[12px] text-[var(--text-muted)]">{profile?.email}</p>
-                </div>
+          {/* ── Profile Card ─────────────────────────────────────────────── */}
+          <SectionCard>
+            <SectionHeader icon={User} title="Profile" />
+
+            {/* Avatar + name row */}
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              {/* Avatar circle */}
+              <div style={{
+                width: 52, height: 52, borderRadius: "50%", flexShrink: 0,
+                background: profile?.image ? "transparent" : "#005F4B",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                overflow: "hidden", border: "2px solid #E5E7EB",
+              }}>
+                {profile?.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={profile.image} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <span style={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>{initials}</span>
+                )}
               </div>
               <div>
-                <Label className="text-[13px] mb-1.5 block">Display Name</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} className="h-9 text-[13px]" placeholder="Your full name" />
+                <p style={{ fontSize: 16, fontWeight: 700, color: "#111827", margin: 0 }}>
+                  {profile?.name || "No name set"}
+                </p>
+                <p style={{ fontSize: 13, color: "#6B7280", margin: "2px 0 0" }}>
+                  {profile?.email}
+                </p>
               </div>
-              <Button onClick={handleSaveProfile} disabled={saving} className="h-9 text-[13px] bg-[var(--primary)] hover:bg-[var(--primary-dark)]">
-                {saving ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : null}
-                Save Profile
-              </Button>
             </div>
-          </section>
 
-          {/* ── Resume ────────────────────────────────────────────────────── */}
-          <section>
-            <h2 className="text-[14px] font-semibold mb-4 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-[var(--primary)]" />
-              Resume
-            </h2>
-            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 space-y-3">
-              <p className="text-[12px] text-[var(--text-muted)]">
-                Paste your resume text below. The AI uses this to compute match scores for each job description.
-              </p>
-              <Textarea
+            {/* Display name field */}
+            <div>
+              <FieldLabel>Display Name</FieldLabel>
+              <StyledInput
+                value={name}
+                onChange={setName}
+                placeholder="Your full name"
+              />
+            </div>
+
+            {/* Save button — right-aligned */}
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <TealButton onClick={handleSaveProfile} loading={saving}>
+                {saving ? "Saving…" : "Save Profile"}
+              </TealButton>
+            </div>
+          </SectionCard>
+
+          {/* ── Resume Card ───────────────────────────────────────────────── */}
+          <SectionCard>
+            <SectionHeader icon={FileText} title="Resume" />
+
+            <p style={{ fontSize: 13, color: "#6B7280", margin: 0, lineHeight: 1.6 }}>
+              Paste your resume text below. The AI uses this to compute match scores for each job description.
+            </p>
+
+            <div>
+              <textarea
                 value={resumeText}
                 onChange={(e) => setResumeText(e.target.value)}
                 placeholder="Paste your full resume text here…"
-                className="min-h-[200px] text-[13px] resize-none"
+                onFocus={() => setTextareaFocused(true)}
+                onBlur={() => setTextareaFocused(false)}
+                style={{
+                  width: "100%", minHeight: 160, padding: "12px",
+                  border: `1px solid ${textareaFocused ? "#005F4B" : "#D1D5DB"}`,
+                  borderRadius: 6, fontSize: 13, color: "#111827",
+                  background: "#fff", outline: "none",
+                  boxSizing: "border-box", resize: "vertical",
+                  fontFamily: "Inter, sans-serif", lineHeight: 1.6,
+                  boxShadow: textareaFocused ? "0 0 0 3px rgba(0,95,75,0.08)" : "none",
+                  transition: "border-color 0.15s, box-shadow 0.15s",
+                  display: "block",
+                }}
               />
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-[var(--text-subtle)]">{resumeText.length} characters</span>
-                <Button onClick={handleSaveProfile} size="sm" disabled={saving} className="h-8 text-[12px] bg-[var(--primary)] hover:bg-[var(--primary-dark)]">
-                  {saving ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <CheckCircle2 className="w-3 h-3 mr-1" />}
-                  Save Resume
-                </Button>
+              {/* Footer row */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
+                <span style={{ fontSize: 11.5, color: "#9CA3AF" }}>{resumeText.length} characters</span>
+                <TealButton onClick={handleSaveProfile} loading={saving} size="sm">
+                  <CheckCircle2 size={13} />
+                  {saving ? "Saving…" : "Save Resume"}
+                </TealButton>
               </div>
             </div>
-          </section>
+          </SectionCard>
 
-          {/* ── Integrations ──────────────────────────────────────────────── */}
-          <section>
-            <h2 className="text-[14px] font-semibold mb-4 flex items-center gap-2">
-              <Mail className="w-4 h-4 text-[var(--primary)]" />
-              Integrations
-            </h2>
-            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 space-y-4">
+          {/* ── Integrations Card ─────────────────────────────────────────── */}
+          <SectionCard>
+            <SectionHeader icon={Mail} title="Integrations" />
 
-              {/* Gmail */}
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-[13px] font-medium">Gmail</p>
-                    {profile?.gmailConnected && (
-                      <span className="text-[11px] text-green-600 flex items-center gap-1 font-medium">
-                        <CheckCircle2 className="w-3 h-3" /> Connected
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[12px] text-[var(--text-muted)] mt-0.5">
-                    Syncs job-related emails from your inbox using your Google account OAuth token.
-                    No third-party service involved.
-                  </p>
-                  {profile?.gmailLastSyncedAt && (
-                    <p className="text-[11px] text-[var(--text-subtle)] mt-1">
-                      Last synced {formatRelative(profile.gmailLastSyncedAt)}
-                    </p>
+            {/* Gmail row */}
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: "#111827", margin: 0 }}>Gmail</p>
+                  {profile?.gmailConnected && (
+                    <span style={{
+                      display: "inline-flex", alignItems: "center", gap: 4,
+                      fontSize: 11, fontWeight: 500, color: "#059669",
+                      background: "#ECFDF5", border: "1px solid #A7F3D0",
+                      padding: "2px 8px", borderRadius: 20,
+                    }}>
+                      <CheckCircle2 size={10} />
+                      Connected
+                    </span>
                   )}
                 </div>
-                <Button
-                  size="sm"
-                  variant={profile?.gmailConnected ? "outline" : "default"}
-                  className="h-8 text-[12px] gap-1.5 flex-shrink-0"
-                  onClick={handleGmailSync}
-                  disabled={syncing}
-                >
-                  {syncing
-                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    : <RefreshCw className="w-3.5 h-3.5" />}
-                  {profile?.gmailConnected ? "Sync Now" : "Connect & Sync"}
-                </Button>
-              </div>
-
-              <Separator />
-
-              {/* Google Calendar */}
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-[13px] font-medium">Google Calendar</p>
-                    {profile?.gmailConnected ? (
-                      <span className="text-[11px] text-green-600 flex items-center gap-1 font-medium">
-                        <CheckCircle2 className="w-3 h-3" /> Access Granted
-                      </span>
-                    ) : (
-                      <span className="text-[11px] text-amber-600 flex items-center gap-1 font-medium">
-                        <AlertCircle className="w-3 h-3" /> Needs permission
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[12px] text-[var(--text-muted)] mt-0.5">
-                    Automatically creates and updates Google Calendar events when you add interviews.
-                    Uses your existing Google sign-in — no extra accounts needed.
+                <p style={{ fontSize: 13, color: "#6B7280", margin: 0, lineHeight: 1.5 }}>
+                  Syncs job-related emails from your inbox using your Google account OAuth token. No third-party service involved.
+                </p>
+                {profile?.gmailLastSyncedAt && (
+                  <p style={{ fontSize: 11.5, color: "#9CA3AF", margin: "4px 0 0" }}>
+                    Last synced {formatRelative(profile.gmailLastSyncedAt)}
                   </p>
-                </div>
-                {!profile?.gmailConnected && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 text-[12px] gap-1.5 flex-shrink-0"
-                    onClick={handleGrantCalendarAccess}
-                  >
-                    <Calendar className="w-3.5 h-3.5" />
-                    Grant Access
-                  </Button>
                 )}
               </div>
+              <OutlineButton onClick={handleGmailSync} loading={syncing}>
+                {syncing ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> : <RefreshCw size={13} />}
+                {profile?.gmailConnected ? "Sync Now" : "Connect & Sync"}
+              </OutlineButton>
             </div>
-          </section>
 
-          {/* ── Data ──────────────────────────────────────────────────────── */}
-          <section>
-            <h2 className="text-[14px] font-semibold mb-4 flex items-center gap-2">
-              <Download className="w-4 h-4 text-[var(--primary)]" />
-              Data
-            </h2>
-            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[13px] font-medium">Export All Data</p>
-                  <p className="text-[12px] text-[var(--text-muted)]">Download all your applications as JSON</p>
+            <Divider />
+
+            {/* Google Calendar row */}
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: "#111827", margin: 0 }}>Google Calendar</p>
+                  {profile?.gmailConnected ? (
+                    <span style={{
+                      display: "inline-flex", alignItems: "center", gap: 4,
+                      fontSize: 11, fontWeight: 500, color: "#059669",
+                      background: "#ECFDF5", border: "1px solid #A7F3D0",
+                      padding: "2px 8px", borderRadius: 20,
+                    }}>
+                      <CheckCircle2 size={10} />
+                      Access Granted
+                    </span>
+                  ) : (
+                    <span style={{
+                      display: "inline-flex", alignItems: "center", gap: 4,
+                      fontSize: 11, fontWeight: 500, color: "#D97706",
+                      background: "#FEF3C7", border: "1px solid #FDE68A",
+                      padding: "2px 8px", borderRadius: 20,
+                    }}>
+                      <AlertCircle size={10} />
+                      Needs permission
+                    </span>
+                  )}
                 </div>
-                <Button size="sm" variant="outline" className="h-8 text-[12px] gap-1.5" onClick={handleExportData}>
-                  <Download className="w-3.5 h-3.5" />
-                  Export
-                </Button>
+                <p style={{ fontSize: 13, color: "#6B7280", margin: 0, lineHeight: 1.5 }}>
+                  Automatically creates and updates Google Calendar events when you add interviews. Uses your existing Google sign-in — no extra accounts needed.
+                </p>
               </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[13px] font-medium text-red-600">Delete Account</p>
-                  <p className="text-[12px] text-[var(--text-muted)]">Permanently delete your account and all data</p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 text-[12px] text-red-600 border-red-200 hover:bg-red-50 gap-1.5"
-                  onClick={() => toast.error("Account deletion requires email confirmation — contact support")}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Delete
-                </Button>
-              </div>
+              {!profile?.gmailConnected && (
+                <OutlineButton onClick={handleGrantCalendarAccess}>
+                  <Calendar size={13} />
+                  Grant Access
+                </OutlineButton>
+              )}
             </div>
-          </section>
+          </SectionCard>
+
+          {/* ── Data Card ─────────────────────────────────────────────────── */}
+          <SectionCard>
+            <SectionHeader icon={Download} title="Data" />
+
+            {/* Export row */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 600, color: "#111827", margin: 0 }}>Export All Data</p>
+                <p style={{ fontSize: 13, color: "#6B7280", margin: "2px 0 0" }}>
+                  Download all your applications as a JSON file
+                </p>
+              </div>
+              <OutlineButton onClick={handleExportData}>
+                <Download size={13} />
+                Export
+              </OutlineButton>
+            </div>
+
+            <Divider />
+
+            {/* Delete Account row */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 600, color: "#DC2626", margin: 0 }}>Delete Account</p>
+                <p style={{ fontSize: 13, color: "#6B7280", margin: "2px 0 0" }}>
+                  Permanently delete your account and all associated data
+                </p>
+              </div>
+              <OutlineButton
+                onClick={() => toast.error("Account deletion requires email confirmation — contact support")}
+                danger
+              >
+                <Trash2 size={13} />
+                Delete
+              </OutlineButton>
+            </div>
+          </SectionCard>
 
         </div>
       </div>
+
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.5 } }
+      `}</style>
     </div>
   );
 }
