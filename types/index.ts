@@ -251,3 +251,12 @@ export type DetectedApplication = {
   snippet: string;
   existingApplicationId?: string;
 };
+
+// ─── OAuth Scopes ────────────────────────────────────────────────────────────
+export const GOOGLE_SCOPES = [
+  "openid",
+  "email",
+  "profile",
+  "https://www.googleapis.com/auth/gmail.readonly",
+  "https://www.googleapis.com/auth/calendar.events",
+].join(" ");

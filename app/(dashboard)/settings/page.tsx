@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getInitials, formatRelative } from "@/lib/utils";
-import { GOOGLE_SCOPES } from "@/lib/auth";
+import { GOOGLE_SCOPES } from "@/types";
 import { TopBar } from "@/components/layout/TopBar";
 
 interface UserProfile {
