@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Bell, Plus, Loader2 } from "lucide-react";
 import { UserAvatar } from "@/components/layout/UserAvatar";
 import { toast } from "sonner";
+import { signIn } from "next-auth/react";
 
 interface TopBarProps {
   title: string;
@@ -34,24 +35,33 @@ export function TopBar({
 
   const handleGmailSync = async () => {
     setSyncing(true);
-    toast.promise(
-      fetch("/api/integrations/gmail/sync", { method: "POST" }).then(async (res) => {
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || "Sync failed");
+    const toastId = toast.loading("Syncing Gmail inbox...");
+    try {
+      const res = await fetch("/api/integrations/gmail/sync", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 401) {
+          toast.error("Google Connection Expired", {
+            id: toastId,
+            description: data.error || "Please reconnect your Google account.",
+            action: {
+              label: "Reconnect",
+              onClick: () => signIn("google", { callbackUrl: window.location.pathname }),
+            },
+            duration: 10000,
+          });
+        } else {
+          toast.error(data.error || "Gmail sync failed", { id: toastId });
         }
-        return res.json();
-      }),
-      {
-        loading: "Syncing Gmail inbox...",
-        success: (data) => {
-          if (onSyncSuccess) onSyncSuccess(data);
-          return `Synced ${data.synced} threads — found ${data.detected.length} job-related emails`;
-        },
-        error: (err: Error) => err.message || "Gmail sync failed",
-        finally: () => setSyncing(false),
+        return;
       }
-    );
+      toast.success(`Synced ${data.synced} threads — found ${data.detected.length} job-related emails`, { id: toastId });
+      if (onSyncSuccess) onSyncSuccess(data);
+    } catch {
+      toast.error("Gmail sync failed", { id: toastId });
+    } finally {
+      setSyncing(false);
+    }
   };
 
   return (

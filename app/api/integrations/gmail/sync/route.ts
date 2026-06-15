@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     accessToken = await getValidAccessToken(userId);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Token error";
-    return NextResponse.json({ error: message }, { status: 401 });
+    return NextResponse.json({ error: message, needsReauth: true }, { status: 401 });
   }
 
   const headers = { Authorization: `Bearer ${accessToken}` };

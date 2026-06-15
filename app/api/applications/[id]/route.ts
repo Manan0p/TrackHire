@@ -89,16 +89,26 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   return NextResponse.json(updated);
 }
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
+export async function DELETE(req: NextRequest, { params }: Params) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
+  const { searchParams } = new URL(req.url);
+  const permanent = searchParams.get("permanent") === "true";
 
   const existing = await prisma.application.findFirst({
     where: { id, userId: session.user.id },
   });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // If permanent delete is requested OR the application is already withdrawn/archived
+  if (permanent || ["WITHDRAWN", "REJECTED", "GHOSTED"].includes(existing.status)) {
+    await prisma.application.delete({
+      where: { id },
+    });
+    return NextResponse.json({ success: true, deleted: true });
+  }
 
   // Soft delete — set to WITHDRAWN
   const updated = await prisma.application.update({

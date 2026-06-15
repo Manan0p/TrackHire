@@ -217,7 +217,7 @@ export default function AnalyticsPage() {
                           <Cell key={`cell-${index}`} fill={entry.fill} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(v: number) => [v, "Apps"]} />
+                      <Tooltip formatter={(v: any) => [v, "Apps"]} />
                     </PieChart>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
                       {sourceData.map((item) => (
@@ -240,7 +240,7 @@ export default function AnalyticsPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} unit="%" />
-                    <Tooltip formatter={(v: number) => [`${v}%`, "Offer Rate"]} cursor={{ fill: "#F9FAFB" }} />
+                    <Tooltip formatter={(v: any) => [`${v}%`, "Offer Rate"]} cursor={{ fill: "#F9FAFB" }} />
                     <Bar dataKey="rate" fill="#005F4B" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -261,7 +261,7 @@ export default function AnalyticsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
                   <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <Tooltip formatter={(v: number) => [v, "Applications"]} cursor={{ stroke: "#005F4B", strokeWidth: 1, strokeDasharray: "4 2" }} />
+                  <Tooltip formatter={(v: any) => [v, "Applications"]} cursor={{ stroke: "#005F4B", strokeWidth: 1, strokeDasharray: "4 2" }} />
                   <Area type="monotone" dataKey="count" stroke="#005F4B" strokeWidth={2} fill="url(#areaGrad)" dot={{ r: 3, fill: "#005F4B", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#005F4B" }} />
                 </AreaChart>
               </ResponsiveContainer>

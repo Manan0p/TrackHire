@@ -237,7 +237,7 @@ export function ApplicationForm({ defaultStatus = "APPLIED", onSuccess, onCancel
               placeholder="sarah@co.com"
               autoComplete="off"
               data-form-type="other"
-              style={{ WebkitTextSecurity: undefined }}
+              style={{ WebkitTextSecurity: undefined } as React.CSSProperties}
             />
           </div>
         </Field>

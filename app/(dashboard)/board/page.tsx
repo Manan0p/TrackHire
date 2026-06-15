@@ -129,6 +129,7 @@ export default function BoardPage() {
           onCardClick={handleCardClick}
           onAddApplication={openAddDialog}
           onEditApplication={handleCardClick}
+          onApplicationsChange={setApplications}
         />
       )}
 

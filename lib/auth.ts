@@ -30,8 +30,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           access_type: "offline",
           // Force consent screen every time so refresh_token is always issued
           prompt: "consent",
+          response_type: "code",
         },
       },
+      allowDangerousEmailAccountLinking: true,
     }),
     Resend({
       apiKey: process.env.RESEND_API_KEY!,
@@ -43,6 +45,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     error: "/login",
   },
   callbacks: {
+    async signIn({ account, user }) {
+      if (account?.provider === "google" && user?.id) {
+        const existingAccount = await prisma.account.findFirst({
+          where: { userId: user.id, provider: "google" },
+        });
+        if (existingAccount) {
+          await prisma.account.update({
+            where: { id: existingAccount.id },
+            data: {
+              access_token: account.access_token,
+              refresh_token: account.refresh_token ?? existingAccount.refresh_token,
+              expires_at: account.expires_at,
+              scope: account.scope,
+              id_token: account.id_token,
+            },
+          });
+        }
+      }
+      return true;
+    },
     session({ session, user }) {
       session.user.id = user.id;
       return session;

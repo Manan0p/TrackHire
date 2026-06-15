@@ -199,19 +199,36 @@ export default function SettingsPage() {
   };
 
   const handleGmailSync = async () => {
+    if (!profile?.gmailConnected) {
+      signIn("google", { callbackUrl: "/settings" }, { scope: GOOGLE_SCOPES });
+      return;
+    }
     setSyncing(true);
+    const toastId = toast.loading("Syncing Gmail...");
     try {
       const res = await fetch("/api/integrations/gmail/sync", { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Gmail sync failed");
+        if (res.status === 401) {
+          toast.error("Google Connection Expired", {
+            id: toastId,
+            description: data.error || "Please reconnect your Google account.",
+            action: {
+              label: "Reconnect",
+              onClick: () => signIn("google", { callbackUrl: "/settings" }, { scope: GOOGLE_SCOPES }),
+            },
+            duration: 10000,
+          });
+        } else {
+          toast.error(data.error || "Gmail sync failed", { id: toastId });
+        }
         return;
       }
       const { detected, synced } = data;
-      toast.success(`Synced ${synced} threads — found ${detected.length} job-related emails`);
+      toast.success(`Synced ${synced} threads — found ${detected.length} job-related emails`, { id: toastId });
       setProfile((p) => p ? { ...p, gmailConnected: true } : p);
     } catch {
-      toast.error("Gmail sync failed");
+      toast.error("Gmail sync failed", { id: toastId });
     } finally {
       setSyncing(false);
     }

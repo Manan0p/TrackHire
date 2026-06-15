@@ -11,11 +11,12 @@ import {
   closestCenter,
   DragOverlay,
 } from "@dnd-kit/core";
-import { ChevronUp } from "lucide-react";
+import { ChevronUp, ChevronRight } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { KanbanColumn } from "./KanbanColumn";
 import { ApplicationCard } from "./ApplicationCard";
+import { ArchivedApplicationsDrawer } from "./ArchivedApplicationsDrawer";
 import { KANBAN_COLUMNS, ARCHIVED_COLUMNS } from "@/types";
 import type { ApplicationWithRelations } from "@/types";
 import { AppStatus } from "@prisma/client";
@@ -25,6 +26,7 @@ interface KanbanBoardProps {
   onCardClick: (app: ApplicationWithRelations) => void;
   onAddApplication: (status: AppStatus) => void;
   onEditApplication: (app: ApplicationWithRelations) => void;
+  onApplicationsChange?: (apps: ApplicationWithRelations[]) => void;
 }
 
 export function KanbanBoard({
@@ -32,9 +34,11 @@ export function KanbanBoard({
   onCardClick,
   onAddApplication,
   onEditApplication,
+  onApplicationsChange,
 }: KanbanBoardProps) {
   const [applications, setApplications] = useState(initialApplications);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -83,11 +87,11 @@ export function KanbanBoard({
       if (newStatus === activeApp.status && newOrder === activeApp.boardOrder) return;
 
       // Optimistic UI update
-      setApplications((prev) =>
-        prev.map((a) =>
-          a.id === activeApp.id ? { ...a, status: newStatus, boardOrder: newOrder } : a
-        )
+      const updatedApps = applications.map((a) =>
+        a.id === activeApp.id ? { ...a, status: newStatus, boardOrder: newOrder } : a
       );
+      setApplications(updatedApps);
+      onApplicationsChange?.(updatedApps);
 
       try {
         await fetch(`/api/applications/${activeApp.id}`, {
@@ -98,26 +102,71 @@ export function KanbanBoard({
       } catch {
         // Rollback on error
         setApplications(initialApplications);
+        onApplicationsChange?.(initialApplications);
         toast.error("Failed to update application status");
       }
     },
-    [applications, getColumnApps, initialApplications]
+    [applications, getColumnApps, initialApplications, onApplicationsChange]
   );
 
   const handleArchive = useCallback(
     async (app: ApplicationWithRelations) => {
-      setApplications((prev) =>
-        prev.map((a) => (a.id === app.id ? { ...a, status: "WITHDRAWN" } : a))
-      );
+      const updatedApps = applications.map((a) => (a.id === app.id ? { ...a, status: "WITHDRAWN" as AppStatus } : a));
+      setApplications(updatedApps);
+      onApplicationsChange?.(updatedApps);
       try {
         await fetch(`/api/applications/${app.id}`, { method: "DELETE" });
         toast.success(`Archived ${app.company} application`);
       } catch {
         setApplications(initialApplications);
+        onApplicationsChange?.(initialApplications);
         toast.error("Failed to archive application");
       }
     },
-    [initialApplications]
+    [applications, initialApplications, onApplicationsChange]
+  );
+
+  const handleRestore = useCallback(
+    async (app: ApplicationWithRelations) => {
+      const updatedApps = applications.map((a) =>
+        a.id === app.id ? { ...a, status: "APPLIED" as AppStatus } : a
+      );
+      setApplications(updatedApps);
+      onApplicationsChange?.(updatedApps);
+      try {
+        await fetch(`/api/applications/${app.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "APPLIED" }),
+        });
+        toast.success(`Restored ${app.company} to Applied column`);
+      } catch {
+        setApplications(initialApplications);
+        onApplicationsChange?.(initialApplications);
+        toast.error("Failed to restore application");
+      }
+    },
+    [applications, initialApplications, onApplicationsChange]
+  );
+
+  const handleDeletePermanent = useCallback(
+    async (app: ApplicationWithRelations) => {
+      if (!window.confirm(`Are you sure you want to permanently delete your application to ${app.company}? This cannot be undone.`)) {
+        return;
+      }
+      const updatedApps = applications.filter((a) => a.id !== app.id);
+      setApplications(updatedApps);
+      onApplicationsChange?.(updatedApps);
+      try {
+        await fetch(`/api/applications/${app.id}?permanent=true`, { method: "DELETE" });
+        toast.success(`Permanently deleted ${app.company} application`);
+      } catch {
+        setApplications(initialApplications);
+        onApplicationsChange?.(initialApplications);
+        toast.error("Failed to delete application");
+      }
+    },
+    [applications, initialApplications, onApplicationsChange]
   );
 
   return (
@@ -143,6 +192,7 @@ export function KanbanBoard({
         </div>
 
         <div
+          onClick={() => setDrawerOpen(true)}
           style={{
             margin: "4px 8px 6px",
             height: 32,
@@ -154,7 +204,12 @@ export function KanbanBoard({
             background: "#F9FAFB",
             padding: "0 12px",
             flexShrink: 0,
+            cursor: "pointer",
+            userSelect: "none",
+            transition: "background 0.15s",
           }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "#F3F4F6")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "#F9FAFB")}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
             <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#6B7280" strokeWidth={1.8}>
@@ -179,10 +234,18 @@ export function KanbanBoard({
             >
               {ARCHIVED_COLUMNS.reduce((sum, status) => sum + getColumnApps(status).length, 0)}
             </span>
-            <ChevronUp style={{ width: 13, height: 13, color: "#6B7280" }} />
+            <ChevronRight style={{ width: 13, height: 13, color: "#6B7280" }} />
           </div>
         </div>
       </div>
+
+      <ArchivedApplicationsDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        applications={applications.filter((a) => ARCHIVED_COLUMNS.includes(a.status))}
+        onRestore={handleRestore}
+        onDelete={handleDeletePermanent}
+      />
 
       <DragOverlay>
         {activeApp && (
