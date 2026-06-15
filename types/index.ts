@@ -19,6 +19,8 @@ export type ResumeEducation = {
   field: string;
   from: string;
   to: string;
+  gpa?: string;
+  current?: boolean;
 };
 
 export type ResumeProject = {
@@ -26,7 +28,7 @@ export type ResumeProject = {
   name: string;
   url: string;
   description: string;
-  tech: string[];
+  bullets?: string[];
 };
 
 export type ResumeData = {
@@ -43,8 +45,8 @@ export type ResumeData = {
 export const STATUS_LABELS: Record<AppStatus, string> = {
   WISHLIST: "Wishlist",
   APPLIED: "Applied",
-  OA: "Online Assessment",
-  PHONE: "Phone Screen",
+  OA: "Assessment",
+  PHONE: "HR",
   TECHNICAL: "Technical",
   FINAL: "Final Round",
   OFFER: "Offer",
@@ -87,6 +89,7 @@ export const SOURCE_LABELS: Record<Source, string> = {
   EMAIL: "Email",
   COMPANY_PORTAL: "Company Portal",
   REFERRAL: "Referral",
+  ON_CAMPUS: "On Campus",
   OTHER: "Other",
 };
 
@@ -96,14 +99,15 @@ export const SOURCE_COLORS: Record<Source, string> = {
   EMAIL: "#10B981",
   COMPANY_PORTAL: "#6B7280",
   REFERRAL: "#8B5CF6",
+  ON_CAMPUS: "#DB2777",
   OTHER: "#9CA3AF",
 };
 
 // ─── Event Type Display ───────────────────────────────────────────────────────
 
 export const EVENT_TYPE_LABELS: Record<EventType, string> = {
-  OA_DEADLINE: "OA Deadline",
-  PHONE_SCREEN: "Phone Screen",
+  OA_DEADLINE: "Assessment Deadline",
+  PHONE_SCREEN: "HR Screen",
   TECHNICAL_INTERVIEW: "Technical Interview",
   SYSTEM_DESIGN: "System Design",
   FINAL_ROUND: "Final Round",
@@ -133,7 +137,6 @@ export const KANBAN_COLUMNS: AppStatus[] = [
   "OA",
   "PHONE",
   "TECHNICAL",
-  "FINAL",
   "OFFER",
 ];
 

@@ -33,7 +33,7 @@ function CompanyAvatar({ company, size = 24 }: { company: string; size?: number 
 
 const SOURCE_LABEL: Record<string, string> = {
   LINKEDIN: "LinkedIn", WELLFOUND: "Wellfound", EMAIL: "Email",
-  COMPANY_PORTAL: "Careers", REFERRAL: "Referral", OTHER: "Direct",
+  COMPANY_PORTAL: "Careers", REFERRAL: "Referral", ON_CAMPUS: "On Campus", OTHER: "Direct",
 };
 
 interface ApplicationCardProps {

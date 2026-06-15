@@ -186,15 +186,17 @@ export function EventTimeline({
             value={form.type}
             onValueChange={(v) => setForm((f) => ({ ...f, type: v as EventType }))}
           >
-            <SelectTrigger className="h-8 text-[13px]">
-              <SelectValue />
+            <SelectTrigger className="w-full h-8 text-[13px]">
+              <SelectValue>{EVENT_TYPE_LABELS[form.type]}</SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(EVENT_TYPE_LABELS).map(([key, label]) => (
-                <SelectItem key={key} value={key} className="text-[13px]">
-                  {label}
-                </SelectItem>
-              ))}
+              {Object.entries(EVENT_TYPE_LABELS)
+                .filter(([key]) => key !== "FINAL_ROUND")
+                .map(([key, label]) => (
+                  <SelectItem key={key} value={key} className="text-[13px]">
+                    {label}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
 
@@ -206,7 +208,7 @@ export function EventTimeline({
             className="h-8 text-[13px]"
           />
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-[1.8fr_1fr] gap-2">
             <Input
               type="datetime-local"
               value={form.scheduledAt}
@@ -238,11 +240,11 @@ export function EventTimeline({
           />
 
           <div className="flex gap-2">
-            <Button type="submit" size="sm" disabled={loading} className="flex-1 h-8 text-[13px] bg-[var(--primary)] hover:bg-[var(--primary-dark)]">
+            <Button type="submit" disabled={loading} className="flex-1 h-8 text-[13px] bg-[var(--primary)] hover:bg-[var(--primary-dark)] text-white">
               {loading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
               Add Event
             </Button>
-            <Button type="button" size="sm" variant="outline" className="h-8 text-[13px]" onClick={() => setShowForm(false)}>
+            <Button type="button" variant="outline" className="flex-1 h-8 text-[13px] border-[#D1D5DB]" onClick={() => setShowForm(false)}>
               Cancel
             </Button>
           </div>

@@ -11,10 +11,9 @@ import type { ApplicationWithRelations } from "@/types";
 const COLUMN_LABELS: Partial<Record<AppStatus, string>> = {
   WISHLIST: "WISHLIST",
   APPLIED: "APPLIED",
-  OA: "OA",
-  PHONE: "PHONE SCREEN",
+  OA: "ASSESSMENT",
+  PHONE: "HR",
   TECHNICAL: "TECHNICAL",
-  FINAL: "FINAL ROUND",
   OFFER: "OFFER",
 };
 

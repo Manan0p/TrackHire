@@ -14,6 +14,7 @@ enum Source {
   EMAIL
   COMPANY_PORTAL
   REFERRAL
+  ON_CAMPUS
   OTHER
 }
 

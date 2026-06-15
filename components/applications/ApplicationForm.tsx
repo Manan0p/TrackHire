@@ -7,7 +7,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { ApplicationWithRelations } from "@/types";
 
-const SOURCES: Source[] = ["LINKEDIN", "WELLFOUND", "EMAIL", "COMPANY_PORTAL", "REFERRAL", "OTHER"];
+const SOURCES: Source[] = ["LINKEDIN", "WELLFOUND", "EMAIL", "COMPANY_PORTAL", "REFERRAL", "ON_CAMPUS", "OTHER"];
 const STATUSES: AppStatus[] = ["WISHLIST", "APPLIED", "OA", "PHONE", "TECHNICAL", "FINAL", "OFFER", "REJECTED"];
 
 interface ApplicationFormProps {

@@ -38,7 +38,11 @@ export function compileResumeData(data: ResumeData): string {
     const eduLines = ["EDUCATION"];
     for (const edu of data.education) {
       const degree = edu.field ? `${edu.degree} in ${edu.field}` : edu.degree;
-      eduLines.push(`${degree} | ${edu.school} (${edu.from} – ${edu.to})`);
+      const dateRange = edu.current
+        ? `${edu.from} – Present`
+        : `${edu.from} – ${edu.to}`;
+      const gpaStr = edu.gpa?.trim() ? ` (GPA: ${edu.gpa.trim()})` : "";
+      eduLines.push(`${degree} | ${edu.school} (${dateRange})${gpaStr}`);
     }
     parts.push(eduLines.join("\n"));
   }
@@ -47,10 +51,13 @@ export function compileResumeData(data: ResumeData): string {
   if (data.projects?.length > 0) {
     const projLines = ["PROJECTS"];
     for (const proj of data.projects) {
-      const techStr = proj.tech?.length > 0 ? ` [${proj.tech.join(", ")}]` : "";
-      projLines.push(`\n${proj.name}${techStr}${proj.url ? ` — ${proj.url}` : ""}`);
+      projLines.push(`\n${proj.name}${proj.url ? ` — ${proj.url}` : ""}`);
       if (proj.description?.trim()) {
         projLines.push(proj.description.trim());
+      }
+      const bullets = proj.bullets || [];
+      for (const bullet of bullets) {
+        if (bullet.trim()) projLines.push(`• ${bullet.trim()}`);
       }
     }
     parts.push(projLines.join("\n"));

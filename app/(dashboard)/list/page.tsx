@@ -17,16 +17,16 @@ const SOURCE_COLORS: Record<string, { bg: string; color: string; border: string;
   EMAIL:         { bg: "#F0FDF4", color: "#16A34A", border: "#BBF7D0", label: "Email" },
   COMPANY_PORTAL:{ bg: "#F5F5F4", color: "#57534E", border: "#D6D3D1", label: "Direct" },
   REFERRAL:      { bg: "#FFF7ED", color: "#C2410C", border: "#FED7AA", label: "Referral" },
+  ON_CAMPUS:     { bg: "#FDF2F8", color: "#DB2777", border: "#FBCFE8", label: "On-Campus" },
   OTHER:         { bg: "#F5F5F4", color: "#57534E", border: "#D6D3D1", label: "Other" },
 };
 
 const STATUS_DISPLAY: Record<string, { dot: string; label: string }> = {
   WISHLIST:  { dot: "#9CA3AF", label: "Wishlist" },
   APPLIED:   { dot: "#3B82F6", label: "Applied" },
-  OA:        { dot: "#8B5CF6", label: "OA" },
-  PHONE:     { dot: "#0EA5E9", label: "Screening" },
+  OA:        { dot: "#8B5CF6", label: "Assessment" },
+  PHONE:     { dot: "#0EA5E9", label: "HR" },
   TECHNICAL: { dot: "#F59E0B", label: "Interviewing" },
-  FINAL:     { dot: "#EF4444", label: "Final Round" },
   OFFER:     { dot: "#10B981", label: "Offer" },
   REJECTED:  { dot: "#F43F5E", label: "Rejected" },
 };
@@ -80,7 +80,7 @@ export default function ListView() {
   };
 
   // Filter
-  const ACTIVE_STATUSES: AppStatus[] = ["APPLIED", "OA", "PHONE", "TECHNICAL", "FINAL", "OFFER"];
+  const ACTIVE_STATUSES: AppStatus[] = ["APPLIED", "OA", "PHONE", "TECHNICAL", "OFFER"];
   const filtered = applications
     .filter((a) => {
       const q = search.toLowerCase();

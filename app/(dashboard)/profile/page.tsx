@@ -179,54 +179,90 @@ function GhostButton({ onClick, children, danger = false }: {
 // ─── Skills Input ─────────────────────────────────────────────────────────────
 
 function SkillsInput({ skills, onChange }: { skills: string[]; onChange: (s: string[]) => void }) {
-  const [input, setInput] = useState("");
-  const addSkill = () => {
-    const trimmed = input.trim();
-    if (trimmed && !skills.includes(trimmed)) {
-      onChange([...skills, trimmed]);
+  const [text, setText] = useState(() => skills.join(", "));
+
+  useEffect(() => {
+    const currentParsed = text
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const isEqual =
+      currentParsed.length === skills.length &&
+      currentParsed.every((v, i) => v === skills[i]);
+    if (!isEqual) {
+      setText(skills.join(", "));
     }
-    setInput("");
+  }, [skills, text]);
+
+  const handleChange = (val: string) => {
+    setText(val);
+    const parsed = val
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const unique: string[] = [];
+    for (const item of parsed) {
+      if (!unique.includes(item)) {
+        unique.push(item);
+      }
+    }
+    onChange(unique);
   };
-  const removeSkill = (s: string) => onChange(skills.filter((x) => x !== s));
+
+  const removeSkill = (s: string) => {
+    onChange(skills.filter((x) => x !== s));
+  };
+
   return (
-    <div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: skills.length ? 10 : 0 }}>
-        {skills.map((s) => (
-          <span
-            key={s}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 5,
-              padding: "4px 10px", borderRadius: 20,
-              background: "#F0F9F6", border: "1px solid #A7F3D0",
-              fontSize: 12, fontWeight: 500, color: "#005F4B",
-            }}
-          >
-            {s}
-            <button
-              onClick={() => removeSkill(s)}
-              style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}
-            >
-              <X size={11} color="#059669" />
-            </button>
-          </span>
-        ))}
-      </div>
-      <div style={{ display: "flex", gap: 8 }}>
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSkill(); } }}
-          placeholder="Type a skill and press Enter…"
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div>
+        <textarea
+          value={text}
+          onChange={(e) => handleChange(e.target.value)}
+          placeholder="React, TypeScript, Next.js, Node.js, Python, SQL..."
+          rows={3}
           style={{
-            flex: 1, height: 36, padding: "0 12px",
+            width: "100%", padding: "12px",
             border: "1px solid #D1D5DB", borderRadius: 8,
-            fontSize: 13, outline: "none", color: "#111827",
+            fontSize: 13, color: "#111827", resize: "vertical",
+            outline: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.6,
+            boxSizing: "border-box",
           }}
         />
-        <GhostButton onClick={addSkill}>
-          <Plus size={13} /> Add
-        </GhostButton>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+          <span style={{ fontSize: 11.5, color: "#6B7280" }}>
+            Separate skills with commas.
+          </span>
+          <span style={{ fontSize: 11.5, fontWeight: 600, color: "#005F4B" }}>
+            {skills.length} skill{skills.length === 1 ? "" : "s"} added
+          </span>
+        </div>
       </div>
+
+      {skills.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {skills.map((s) => (
+            <span
+              key={s}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                padding: "4px 10px", borderRadius: 20,
+                background: "#F0F9F6", border: "1px solid #A7F3D0",
+                fontSize: 12, fontWeight: 500, color: "#005F4B",
+              }}
+            >
+              {s}
+              <button
+                type="button"
+                onClick={() => removeSkill(s)}
+                style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}
+              >
+                <X size={11} color="#059669" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -345,7 +381,7 @@ function EducationEntry({
 }: {
   edu: ResumeEducation; onChange: (e: ResumeEducation) => void; onRemove: () => void;
 }) {
-  const set = (k: keyof ResumeEducation, v: string) => onChange({ ...edu, [k]: v });
+  const set = (k: keyof ResumeEducation, v: unknown) => onChange({ ...edu, [k]: v });
   return (
     <div style={{ border: "1px solid #E5E7EB", borderRadius: 10, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
@@ -361,19 +397,34 @@ function EducationEntry({
           <StyledInput value={edu.degree} onChange={(v) => set("degree", v)} placeholder="B.Tech / B.S. / M.S." />
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div>
           <FieldLabel>Field of Study</FieldLabel>
           <StyledInput value={edu.field} onChange={(v) => set("field", v)} placeholder="Computer Science" />
         </div>
+        <div>
+          <FieldLabel>GPA / Percentage</FieldLabel>
+          <StyledInput value={edu.gpa || ""} onChange={(v) => set("gpa", v)} placeholder="3.8/4.0 or 85%" />
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, alignItems: "end" }}>
         <div>
           <FieldLabel>From</FieldLabel>
           <StyledInput value={edu.from} onChange={(v) => set("from", v)} placeholder="2020" />
         </div>
         <div>
           <FieldLabel>To</FieldLabel>
-          <StyledInput value={edu.to} onChange={(v) => set("to", v)} placeholder="2024" />
+          <StyledInput value={edu.to} onChange={(v) => set("to", v)} placeholder="2024" disabled={!!edu.current} />
         </div>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer", paddingBottom: 8 }}>
+          <input
+            type="checkbox"
+            checked={!!edu.current}
+            onChange={(e) => set("current", e.target.checked)}
+            style={{ width: 15, height: 15, cursor: "pointer", accentColor: "#005F4B" }}
+          />
+          <span style={{ color: "#374151", fontWeight: 500 }}>Currently Pursuing</span>
+        </label>
       </div>
     </div>
   );
@@ -387,12 +438,16 @@ function ProjectEntry({
   proj: ResumeProject; onChange: (p: ResumeProject) => void; onRemove: () => void;
 }) {
   const set = (k: keyof ResumeProject, v: unknown) => onChange({ ...proj, [k]: v });
-  const [techInput, setTechInput] = useState("");
-  const addTech = () => {
-    const t = techInput.trim();
-    if (t && !proj.tech.includes(t)) set("tech", [...proj.tech, t]);
-    setTechInput("");
+  
+  const bullets = proj.bullets || [];
+
+  const updateBullet = (i: number, val: string) => {
+    const b = [...bullets];
+    b[i] = val;
+    set("bullets", b);
   };
+  const addBullet = () => set("bullets", [...bullets, ""]);
+  const removeBullet = (i: number) => set("bullets", bullets.filter((_, idx) => idx !== i));
 
   return (
     <div style={{ border: "1px solid #E5E7EB", borderRadius: 10, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -414,7 +469,7 @@ function ProjectEntry({
         <textarea
           value={proj.description}
           onChange={(e) => set("description", e.target.value)}
-          placeholder="What this project does, your role, and key outcomes…"
+          placeholder="Brief overview of the project's purpose…"
           rows={2}
           style={{
             width: "100%", padding: "8px 12px",
@@ -426,26 +481,27 @@ function ProjectEntry({
         />
       </div>
       <div>
-        <FieldLabel hint="Technologies / languages used">Tech Stack</FieldLabel>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: proj.tech.length ? 8 : 0 }}>
-          {proj.tech.map((t) => (
-            <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 20, background: "#EFF6FF", border: "1px solid #BFDBFE", fontSize: 11.5, color: "#3B82F6" }}>
-              {t}
-              <button onClick={() => set("tech", proj.tech.filter((x) => x !== t))} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
-                <X size={10} color="#3B82F6" />
-              </button>
-            </span>
+        <FieldLabel hint="Use bullet points to describe project highlights, achievements, and technical contributions">Project Highlights</FieldLabel>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {bullets.map((b, i) => (
+            <div key={i} style={{ display: "flex", gap: 6 }}>
+              <span style={{ marginTop: 10, color: "#9CA3AF", fontSize: 14, flexShrink: 0 }}>•</span>
+              <input
+                value={b}
+                onChange={(e) => updateBullet(i, e.target.value)}
+                placeholder={`Key contribution or feature ${i + 1}…`}
+                style={{
+                  flex: 1, height: 36, padding: "0 10px",
+                  border: "1px solid #E5E7EB", borderRadius: 6,
+                  fontSize: 13, color: "#111827", outline: "none",
+                }}
+              />
+              <GhostButton onClick={() => removeBullet(i)} danger><Trash2 size={12} /></GhostButton>
+            </div>
           ))}
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            value={techInput}
-            onChange={(e) => setTechInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTech(); } }}
-            placeholder="React, TypeScript, Next.js…"
-            style={{ flex: 1, height: 34, padding: "0 10px", border: "1px solid #D1D5DB", borderRadius: 6, fontSize: 13, outline: "none" }}
-          />
-          <GhostButton onClick={addTech}><Plus size={13} /> Add</GhostButton>
+          <GhostButton onClick={addBullet}>
+            <Plus size={13} /> Add bullet
+          </GhostButton>
         </div>
       </div>
     </div>
@@ -658,7 +714,7 @@ function ResumeBuilder({
             />
           ))}
           <button
-            onClick={() => set("education", [...data.education, { id: newId(), school: "", degree: "", field: "", from: "", to: "" }])}
+            onClick={() => set("education", [...data.education, { id: newId(), school: "", degree: "", field: "", from: "", to: "", gpa: "", current: false }])}
             style={{
               height: 40, border: "2px dashed #D1D5DB", borderRadius: 10,
               background: "#F9FAFB", color: "#6B7280", fontSize: 13, fontWeight: 500,
@@ -688,7 +744,7 @@ function ResumeBuilder({
             />
           ))}
           <button
-            onClick={() => set("projects", [...data.projects, { id: newId(), name: "", url: "", description: "", tech: [] }])}
+            onClick={() => set("projects", [...data.projects, { id: newId(), name: "", url: "", description: "", bullets: [""] }])}
             style={{
               height: 40, border: "2px dashed #D1D5DB", borderRadius: 10,
               background: "#F9FAFB", color: "#6B7280", fontSize: 13, fontWeight: 500,
@@ -892,8 +948,9 @@ export default function ProfilePage() {
                 <StyledInput value={name} onChange={setName} placeholder="Your full name" />
               </div>
               <div>
-                <FieldLabel hint="Shown on your profile card">Headline</FieldLabel>
+                <FieldLabel>Headline</FieldLabel>
                 <StyledInput value={headline} onChange={setHeadline} placeholder="Full-Stack Engineer @ Google" />
+                <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4, marginBottom: 0 }}>Shown on your profile card</p>
               </div>
             </div>
 
