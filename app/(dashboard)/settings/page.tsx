@@ -9,6 +9,7 @@ import {
 import { toast } from "sonner";
 import { getInitials, formatRelative } from "@/lib/utils";
 import { GOOGLE_SCOPES } from "@/lib/auth";
+import { TopBar } from "@/components/layout/TopBar";
 
 interface UserProfile {
   id: string;
@@ -243,15 +244,7 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-        <header style={{
-          display: "flex", alignItems: "center", padding: "0 40px", height: 60,
-          background: "#fff", borderBottom: "1px solid #E5E7EB", flexShrink: 0,
-        }}>
-          <div>
-            <p style={{ fontSize: 11, fontWeight: 600, color: "#9CA3AF", letterSpacing: "0.05em", textTransform: "uppercase", margin: 0 }}>Account</p>
-            <h1 style={{ fontSize: 24, fontWeight: 700, color: "#111827", margin: 0, lineHeight: 1.2 }}>Settings</h1>
-          </div>
-        </header>
+        <TopBar title="Settings" subtitle="Account" showGmailSync={false} showAddApplication={false} />
         <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px" }}>
           <div style={{ maxWidth: 700, display: "flex", flexDirection: "column", gap: 16 }}>
             {[120, 200, 160, 120].map((h, i) => (
@@ -267,18 +260,7 @@ export default function SettingsPage() {
   // ─── Main render ───────────────────────────────────────────────────────────
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F7F7F4" }}>
-      {/* Top Bar */}
-      <header style={{
-        display: "flex", alignItems: "center",
-        padding: "0 40px", height: 60,
-        background: "#fff", borderBottom: "1px solid #E5E7EB",
-        flexShrink: 0, position: "sticky", top: 0, zIndex: 10,
-      }}>
-        <div>
-          <p style={{ fontSize: 11, fontWeight: 600, color: "#9CA3AF", letterSpacing: "0.05em", textTransform: "uppercase", margin: 0 }}>Account</p>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: "#111827", margin: 0, lineHeight: 1.2 }}>Settings</h1>
-        </div>
-      </header>
+      <TopBar title="Settings" subtitle="Account" showGmailSync={false} showAddApplication={false} />
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px" }}>

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, startOfWeek, endOfWeek } from "date-fns";
 import { ApplicationDetail } from "@/components/applications/ApplicationDetail";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { TopBar } from "@/components/layout/TopBar";
 import { EVENT_TYPE_COLORS, EVENT_TYPE_LABELS } from "@/types";
 import { toast } from "sonner";
 import type { ApplicationWithRelations } from "@/types";
@@ -23,33 +24,34 @@ export default function CalendarPage() {
   const [selectedApp, setSelectedApp] = useState<ApplicationWithRelations | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const res = await fetch("/api/applications?limit=200");
-        const data = await res.json();
-        const apps: ApplicationWithRelations[] = data.applications || [];
-        const flat: FlatEvent[] = [];
-        for (const app of apps) {
-          for (const evt of app.events || []) {
-            flat.push({
-              id: evt.id,
-              type: evt.type,
-              title: evt.title,
-              scheduledAt: new Date(evt.scheduledAt),
-              application: app,
-            });
-          }
+  const fetchEvents = useCallback(async () => {
+    try {
+      const res = await fetch("/api/applications?limit=200");
+      const data = await res.json();
+      const apps: ApplicationWithRelations[] = data.applications || [];
+      const flat: FlatEvent[] = [];
+      for (const app of apps) {
+        for (const evt of app.events || []) {
+          flat.push({
+            id: evt.id,
+            type: evt.type,
+            title: evt.title,
+            scheduledAt: new Date(evt.scheduledAt),
+            application: app,
+          });
         }
-        setEvents(flat);
-      } catch {
-        toast.error("Failed to load events");
-      } finally {
-        setLoading(false);
       }
-    };
-    fetchEvents();
+      setEvents(flat);
+    } catch {
+      toast.error("Failed to load events");
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -64,14 +66,7 @@ export default function CalendarPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F7F7F4" }}>
-      {/* Top Bar */}
-      <header style={{
-        display: "flex", alignItems: "center", padding: "0 24px", height: 52,
-        background: "#fff", borderBottom: "1px solid #E5E7EB", flexShrink: 0,
-        position: "sticky", top: 0, zIndex: 10, gap: 12,
-      }}>
-        <h1 style={{ fontSize: 16, fontWeight: 700, color: "#111827", margin: 0 }}>Calendar</h1>
-        <div style={{ flex: 1 }} />
+      <TopBar title="Calendar" subtitle="Schedule" onSyncSuccess={fetchEvents}>
         {/* Month navigation */}
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <button
@@ -102,7 +97,7 @@ export default function CalendarPage() {
             Today
           </button>
         </div>
-      </header>
+      </TopBar>
 
       <div style={{ flex: 1, padding: "16px 24px", overflow: "auto" }}>
         {/* Day headers */}

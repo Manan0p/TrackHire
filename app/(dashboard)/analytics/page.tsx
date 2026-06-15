@@ -8,8 +8,8 @@ import { format, subWeeks, startOfWeek } from "date-fns";
 import { toast } from "sonner";
 import type { ApplicationWithRelations } from "@/types";
 import { AppStatus, Source } from "@prisma/client";
-import { Briefcase, MessageSquare, Trophy, Timer, Bell, Plus } from "lucide-react";
-import { UserAvatar } from "@/components/layout/UserAvatar";
+import { Briefcase, MessageSquare, Trophy, Timer } from "lucide-react";
+import { TopBar } from "@/components/layout/TopBar";
 
 const FUNNEL_STATUSES: AppStatus[] = ["APPLIED", "OA", "PHONE", "TECHNICAL", "FINAL", "OFFER"];
 const FUNNEL_LABELS: Record<string, string> = {
@@ -41,19 +41,7 @@ export default function AnalyticsPage() {
 
   useEffect(() => { void fetchApplications(); }, []);
 
-  const handleGmailSync = async () => {
-    toast.promise(
-      fetch("/api/integrations/gmail/sync", { method: "POST" }).then(async (res) => {
-        if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Sync failed"); }
-        return res.json();
-      }),
-      {
-        loading: "Syncing Gmail inbox...",
-        success: (data) => { void fetchApplications(); return `Synced ${data.synced} threads`; },
-        error: (err: Error) => err.message || "Gmail sync failed",
-      }
-    );
-  };
+
 
   const active = applications.filter((a) => a.status !== "WITHDRAWN");
   const interviewRate = active.length > 0
@@ -142,37 +130,7 @@ export default function AnalyticsPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F7F7F4" }}>
-      {/* Top Bar */}
-      <header style={{
-        display: "flex", alignItems: "center", padding: "0 24px", height: 52,
-        background: "#fff", borderBottom: "1px solid #E5E7EB",
-        flexShrink: 0, position: "sticky", top: 0, zIndex: 10, gap: 10,
-      }}>
-        <div>
-          <p style={{ fontSize: 10, fontWeight: 600, color: "#9CA3AF", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 1 }}>Analytics</p>
-          <h1 style={{ fontSize: 16, fontWeight: 700, color: "#111827", margin: 0, lineHeight: 1 }}>Dashboard</h1>
-        </div>
-        <div style={{ flex: 1 }} />
-        <button title="Notifications" style={{ ...btnStyle, width: 34, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#F9FAFB")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}>
-          <Bell size={16} strokeWidth={1.8} />
-        </button>
-        <button onClick={handleGmailSync} style={btnStyle}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#F9FAFB")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}>
-          Sync Gmail
-        </button>
-        <button
-          onClick={() => window.dispatchEvent(new CustomEvent("open-add-application", { detail: { status: "APPLIED" } }))}
-          style={{ ...btnStyle, background: "#005F4B", color: "#fff", border: "none", fontWeight: 600, display: "flex", alignItems: "center", gap: 5 }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#004A3A")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "#005F4B")}>
-          <Plus size={14} strokeWidth={2.5} />
-          Add Application
-        </button>
-        <UserAvatar size={32} />
-      </header>
+      <TopBar title="Dashboard" subtitle="Analytics" onSyncSuccess={fetchApplications} />
 
       <div style={{ flex: 1, padding: "20px 24px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }}>
         {loading ? (

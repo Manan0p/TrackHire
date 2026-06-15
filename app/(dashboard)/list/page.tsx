@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { ApplicationDetail } from "@/components/applications/ApplicationDetail";
 import { CompanyLogo } from "@/components/applications/CompanyLogo";
-import { Download, Search, Bell, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { UserAvatar } from "@/components/layout/UserAvatar";
+import { Download, Search, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { TopBar } from "@/components/layout/TopBar";
 import { formatDate, daysSince } from "@/lib/utils";
 import { EVENT_TYPE_LABELS } from "@/types";
 import { toast } from "sonner";
@@ -62,19 +62,7 @@ export default function ListView() {
 
   useEffect(() => { fetchApplications(); }, [fetchApplications]);
 
-  const handleGmailSync = async () => {
-    toast.promise(
-      fetch("/api/integrations/gmail/sync", { method: "POST" }).then(async (res) => {
-        if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Sync failed"); }
-        return res.json();
-      }),
-      {
-        loading: "Syncing Gmail inbox...",
-        success: (data) => { void fetchApplications(); return `Synced ${data.synced} threads`; },
-        error: (err: Error) => err.message || "Gmail sync failed",
-      }
-    );
-  };
+
 
   const handleExportCSV = () => {
     const headers = ["Company", "Role", "Source", "Status", "Applied At", "Match Score"];
@@ -149,44 +137,7 @@ export default function ListView() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F7F7F4" }}>
-      {/* Top Bar */}
-      <header
-        style={{
-          display: "flex",
-          alignItems: "center",
-          padding: "0 24px",
-          height: "52px",
-          background: "#ffffff",
-          borderBottom: "1px solid #E5E7EB",
-          flexShrink: 0,
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
-          gap: "12px",
-        }}
-      >
-        <h1 style={{ fontSize: "16px", fontWeight: 700, color: "#111827", margin: 0, flexShrink: 0 }}>List</h1>
-        <div style={{ flex: 1 }} />
-        {/* Bell */}
-        <button
-          title="Notifications"
-          style={{ ...inputStyle, width: 34, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#6B7280", flexShrink: 0 }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#F9FAFB")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "#ffffff")}
-        >
-          <Bell size={16} strokeWidth={1.8} />
-        </button>
-        {/* Sync Gmail */}
-        <button
-          onClick={handleGmailSync}
-          style={{ ...inputStyle, padding: "0 14px", fontWeight: 500, flexShrink: 0 }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#F9FAFB")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "#ffffff")}
-        >
-          Sync Gmail
-        </button>
-        <UserAvatar size={32} />
-      </header>
+      <TopBar title="List" subtitle="Applications" onSyncSuccess={fetchApplications} />
 
       {/* Content */}
       <div style={{ flex: 1, padding: "20px 24px", overflow: "auto" }}>

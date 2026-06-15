@@ -1,55 +1,212 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
-import { LogOut, User } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getInitials } from "@/lib/utils";
+import { useState } from "react";
+import { Bell, Plus, Loader2 } from "lucide-react";
+import { UserAvatar } from "@/components/layout/UserAvatar";
+import { toast } from "sonner";
 
 interface TopBarProps {
-  user?: { name?: string | null; email?: string | null; image?: string | null };
+  title: string;
+  subtitle?: string;
+  children?: React.ReactNode;
+  showGmailSync?: boolean;
+  showAddApplication?: boolean;
+  showBell?: boolean;
+  onSyncSuccess?: (data?: any) => void;
 }
 
-export function TopBar({ user }: TopBarProps) {
-  const pathname = usePathname();
+export function TopBar({
+  title,
+  subtitle,
+  children,
+  showGmailSync = true,
+  showAddApplication = true,
+  showBell = true,
+  onSyncSuccess,
+}: TopBarProps) {
+  const [syncing, setSyncing] = useState(false);
+
+  const openAddDialog = () => {
+    window.dispatchEvent(
+      new CustomEvent("open-add-application", { detail: { status: "APPLIED" } })
+    );
+  };
+
+  const handleGmailSync = async () => {
+    setSyncing(true);
+    toast.promise(
+      fetch("/api/integrations/gmail/sync", { method: "POST" }).then(async (res) => {
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || "Sync failed");
+        }
+        return res.json();
+      }),
+      {
+        loading: "Syncing Gmail inbox...",
+        success: (data) => {
+          if (onSyncSuccess) onSyncSuccess(data);
+          return `Synced ${data.synced} threads — found ${data.detected.length} job-related emails`;
+        },
+        error: (err: Error) => err.message || "Gmail sync failed",
+        finally: () => setSyncing(false),
+      }
+    );
+  };
 
   return (
-    <div className="h-12 border-b border-[var(--border)] bg-[var(--surface)] flex items-center justify-between px-4 flex-shrink-0">
-      <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 border border-[var(--border)] rounded text-[11px] text-[var(--text-subtle)] bg-[var(--background)]">
-        <span>⌘</span>K
-      </kbd>
-
-      <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-2 hover:opacity-80 transition-opacity outline-none">
-          <Avatar className="w-7 h-7">
-            <AvatarImage src={user?.image || undefined} />
-            <AvatarFallback className="bg-[var(--primary-light)] text-[var(--primary)] text-[11px] font-semibold">
-              {getInitials(user?.name || user?.email || "U")}
-            </AvatarFallback>
-          </Avatar>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <div className="px-2 py-1.5">
-            <p className="text-[13px] font-medium truncate">{user?.name || "User"}</p>
-            <p className="text-[11px] text-[var(--text-muted)] truncate">{user?.email}</p>
-          </div>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            className="text-red-600 text-[13px] gap-2 cursor-pointer"
+    <header
+      style={{
+        display: "flex",
+        alignItems: "center",
+        padding: "0 24px",
+        height: "56px",
+        background: "#ffffff",
+        borderBottom: "1px solid #E5E7EB",
+        flexShrink: 0,
+        position: "sticky",
+        top: 0,
+        zIndex: 10,
+        gap: "16px",
+      }}
+    >
+      {/* Title block */}
+      <div style={{ flexShrink: 0 }}>
+        {subtitle && (
+          <p
+            style={{
+              fontSize: "10px",
+              fontWeight: 600,
+              color: "#9CA3AF",
+              letterSpacing: "0.05em",
+              textTransform: "uppercase",
+              margin: "0 0 2px 0",
+              lineHeight: 1.2,
+            }}
           >
-            <LogOut className="w-3.5 h-3.5" />
-            Sign out
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+            {subtitle}
+          </p>
+        )}
+        <h1
+          style={{
+            fontSize: "16px",
+            fontWeight: 700,
+            color: "#111827",
+            margin: 0,
+            lineHeight: 1.2,
+          }}
+        >
+          {title}
+        </h1>
+      </div>
+
+      {/* Page-specific children (e.g. Search, Navigation) */}
+      {children && (
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          {children}
+        </div>
+      )}
+
+      <div style={{ flex: 1 }} />
+
+      {/* Right Actions */}
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        {/* Sync Gmail */}
+        {showGmailSync && (
+          <button
+            onClick={handleGmailSync}
+            disabled={syncing}
+            style={{
+              height: 34,
+              padding: "0 14px",
+              border: "1px solid #D1D5DB",
+              borderRadius: "8px",
+              background: "#ffffff",
+              fontSize: "12.5px",
+              fontWeight: 500,
+              color: "#374151",
+              cursor: syncing ? "not-allowed" : "pointer",
+              transition: "background 0.15s",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+            onMouseEnter={(e) => {
+              if (!syncing) e.currentTarget.style.background = "#F9FAFB";
+            }}
+            onMouseLeave={(e) => {
+              if (!syncing) e.currentTarget.style.background = "#ffffff";
+            }}
+          >
+            {syncing && (
+              <Loader2
+                size={13}
+                style={{ animation: "spin 1s linear infinite" }}
+              />
+            )}
+            Sync Gmail
+          </button>
+        )}
+
+        {/* Add Application */}
+        {showAddApplication && (
+          <button
+            onClick={openAddDialog}
+            style={{
+              height: 34,
+              padding: "0 14px",
+              border: "none",
+              borderRadius: "8px",
+              background: "#005F4B",
+              fontSize: "12.5px",
+              fontWeight: 600,
+              color: "#ffffff",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "5px",
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "#004A3A")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "#005F4B")}
+          >
+            <Plus size={14} strokeWidth={2.5} />
+            Add Application
+          </button>
+        )}
+
+        {/* Bell */}
+        {showBell && (
+          <button
+            title="Notifications"
+            style={{
+              width: 34,
+              height: 34,
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "8px",
+              color: "#6B7280",
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "#F3F4F6")}
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.background = "transparent")
+            }
+          >
+            <Bell size={16} strokeWidth={1.8} />
+          </button>
+        )}
+
+        <UserAvatar size={32} />
+      </div>
+
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      `}</style>
+    </header>
   );
 }
