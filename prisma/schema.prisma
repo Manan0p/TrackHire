@@ -48,7 +48,13 @@ model User {
   name            String?
   emailVerified   DateTime?
   image           String?
+  headline        String?
+  linkedinUrl     String?
+  githubUrl       String?
+  portfolioUrl    String?
   resumeText      String?
+  resumeData      Json?
+  coverLetter     String?
   gmailConnected  Boolean       @default(false)
   calendarId      String?
   createdAt       DateTime      @default(now())

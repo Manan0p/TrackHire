@@ -1,5 +1,43 @@
 import { AppStatus, Source, EventType } from "@prisma/client";
 
+// ─── Resume Builder Types ─────────────────────────────────────────────────────
+
+export type ResumeExperience = {
+  id: string;
+  company: string;
+  title: string;
+  from: string;
+  to: string;
+  current: boolean;
+  bullets: string[];
+};
+
+export type ResumeEducation = {
+  id: string;
+  school: string;
+  degree: string;
+  field: string;
+  from: string;
+  to: string;
+};
+
+export type ResumeProject = {
+  id: string;
+  name: string;
+  url: string;
+  description: string;
+  tech: string[];
+};
+
+export type ResumeData = {
+  summary: string;
+  skills: string[];
+  experience: ResumeExperience[];
+  education: ResumeEducation[];
+  projects: ResumeProject[];
+  certifications: string[];
+};
+
 // ─── Status Display ───────────────────────────────────────────────────────────
 
 export const STATUS_LABELS: Record<AppStatus, string> = {

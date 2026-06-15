@@ -80,7 +80,7 @@ export default function ListView() {
   };
 
   // Filter
-  const ACTIVE_STATUSES: AppStatus[] = ["WISHLIST", "APPLIED", "OA", "PHONE", "TECHNICAL", "FINAL", "OFFER"];
+  const ACTIVE_STATUSES: AppStatus[] = ["APPLIED", "OA", "PHONE", "TECHNICAL", "FINAL", "OFFER"];
   const filtered = applications
     .filter((a) => {
       const q = search.toLowerCase();

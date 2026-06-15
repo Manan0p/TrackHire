@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import {
-  User, Mail, FileText, Download, Trash2,
+  User, Mail, Download, Trash2,
   Loader2, CheckCircle2, RefreshCw, Calendar, AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -165,9 +165,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [resumeText, setResumeText] = useState("");
   const [name, setName] = useState("");
-  const [textareaFocused, setTextareaFocused] = useState(false);
 
   useEffect(() => {
     fetch("/api/user/profile")
@@ -175,7 +173,6 @@ export default function SettingsPage() {
       .then((data) => {
         setProfile(data);
         setName(data.name || "");
-        setResumeText(data.resumeText || "");
       })
       .catch(() => toast.error("Failed to load profile"))
       .finally(() => setLoading(false));
@@ -187,7 +184,7 @@ export default function SettingsPage() {
       const res = await fetch("/api/user/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, resumeText }),
+        body: JSON.stringify({ name }),
       });
       if (!res.ok) throw new Error();
       toast.success("Profile saved!");
@@ -283,6 +280,30 @@ export default function SettingsPage() {
       <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px" }}>
         <div style={{ maxWidth: 700, display: "flex", flexDirection: "column", gap: 16 }}>
 
+          {/* ── Profile moved notice ──────────────────────────────────────── */}
+          <a
+            href="/profile"
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "14px 18px", borderRadius: 10,
+              background: "linear-gradient(135deg, #F0F9F6, #EFF6FF)",
+              border: "1px solid #A7F3D0", textDecoration: "none",
+              transition: "box-shadow 0.15s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,95,75,0.12)")}
+            onMouseLeave={(e) => (e.currentTarget.style.boxShadow = "none")}
+          >
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "#005F4B", margin: 0 }}>
+                ✦ Profile &amp; Resume Builder
+              </p>
+              <p style={{ fontSize: 12, color: "#6B7280", margin: "2px 0 0" }}>
+                Manage your LinkedIn, GitHub, portfolio links, and build your resume with the structured editor
+              </p>
+            </div>
+            <span style={{ fontSize: 18, color: "#005F4B", flexShrink: 0 }}>→</span>
+          </a>
+
           {/* ── Profile Card ─────────────────────────────────────────────── */}
           <SectionCard>
             <SectionHeader icon={User} title="Profile" />
@@ -331,45 +352,7 @@ export default function SettingsPage() {
             </div>
           </SectionCard>
 
-          {/* ── Resume Card ───────────────────────────────────────────────── */}
-          <SectionCard>
-            <SectionHeader icon={FileText} title="Resume" />
-
-            <p style={{ fontSize: 13, color: "#6B7280", margin: 0, lineHeight: 1.6 }}>
-              Paste your resume text below. The AI uses this to compute match scores for each job description.
-            </p>
-
-            <div>
-              <textarea
-                value={resumeText}
-                onChange={(e) => setResumeText(e.target.value)}
-                placeholder="Paste your full resume text here…"
-                onFocus={() => setTextareaFocused(true)}
-                onBlur={() => setTextareaFocused(false)}
-                style={{
-                  width: "100%", minHeight: 160, padding: "12px",
-                  border: `1px solid ${textareaFocused ? "#005F4B" : "#D1D5DB"}`,
-                  borderRadius: 6, fontSize: 13, color: "#111827",
-                  background: "#fff", outline: "none",
-                  boxSizing: "border-box", resize: "vertical",
-                  fontFamily: "Inter, sans-serif", lineHeight: 1.6,
-                  boxShadow: textareaFocused ? "0 0 0 3px rgba(0,95,75,0.08)" : "none",
-                  transition: "border-color 0.15s, box-shadow 0.15s",
-                  display: "block",
-                }}
-              />
-              {/* Footer row */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
-                <span style={{ fontSize: 11.5, color: "#9CA3AF" }}>{resumeText.length} characters</span>
-                <TealButton onClick={handleSaveProfile} loading={saving} size="sm">
-                  <CheckCircle2 size={13} />
-                  {saving ? "Saving…" : "Save Resume"}
-                </TealButton>
-              </div>
-            </div>
-          </SectionCard>
-
-          {/* ── Integrations Card ─────────────────────────────────────────── */}
+          {/* ── Integrations Card ─────────────────────────────────────── */}
           <SectionCard>
             <SectionHeader icon={Mail} title="Integrations" />
 

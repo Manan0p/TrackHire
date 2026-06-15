@@ -18,6 +18,7 @@ const navItems = [
   { href: "/list", label: "List", icon: List },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/profile", label: "Profile", icon: User },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -137,52 +138,6 @@ export function Sidebar() {
           );
         })}
       </nav>
-
-      {/* Account → /settings */}
-      <div
-        style={{
-          borderTop: "1px solid rgba(255,255,255,0.08)",
-          paddingTop: "12px",
-          marginTop: "12px",
-        }}
-      >
-        {(() => {
-          const active = pathname === "/settings";
-          return (
-            <Link
-              href="/settings"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "9px",
-                padding: "9px 10px",
-                borderRadius: "8px",
-                fontSize: "13px",
-                fontWeight: active ? 600 : 500,
-                textDecoration: "none",
-                color: active ? "#ffffff" : "rgba(255,255,255,0.6)",
-                background: active ? "#005F4B" : "transparent",
-                transition: "all 0.15s",
-              }}
-              onMouseEnter={(e) => {
-                if (!active) {
-                  (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.07)";
-                  (e.currentTarget as HTMLAnchorElement).style.color = "#ffffff";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!active) {
-                  (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
-                  (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.6)";
-                }
-              }}
-            >
-              <User size={16} strokeWidth={active ? 2.2 : 1.8} style={{ flexShrink: 0 }} />
-              <span>Account</span>
-            </Link>
-          );
-        })()}
-      </div>
     </aside>
   );
 }

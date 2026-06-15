@@ -42,6 +42,19 @@ const ALL_STATUSES: AppStatus[] = [
   "FINAL", "OFFER", "REJECTED", "GHOSTED", "WITHDRAWN",
 ];
 
+const STATUS_STYLE: Record<AppStatus, { bg: string; color: string; border: string }> = {
+  WISHLIST:  { bg: "#F3F4F6", color: "#6B7280", border: "#E5E7EB" },
+  APPLIED:   { bg: "#EFF6FF", color: "#3B82F6", border: "#BFDBFE" },
+  OA:        { bg: "#F5F3FF", color: "#8B5CF6", border: "#DDD6FE" },
+  PHONE:     { bg: "#F0F9FF", color: "#0EA5E9", border: "#BAE6FD" },
+  TECHNICAL: { bg: "#FFFBEB", color: "#F59E0B", border: "#FDE68A" },
+  FINAL:     { bg: "#FEF2F2", color: "#EF4444", border: "#FECACA" },
+  OFFER:     { bg: "#ECFDF5", color: "#10B981", border: "#A7F3D0" },
+  REJECTED:  { bg: "#FFF1F2", color: "#F43F5E", border: "#FECDD3" },
+  GHOSTED:   { bg: "#F8FAFC", color: "#94A3B8", border: "#E2E8F0" },
+  WITHDRAWN: { bg: "#FAFAF9", color: "#A8A29E", border: "#E7E5E4" },
+};
+
 const TABS = ["Timeline", "Recruiter", "Notes", "AI Insights"] as const;
 type Tab = typeof TABS[number];
 
@@ -175,21 +188,47 @@ export function ApplicationDetail({ application, open, onClose, onUpdate }: Appl
                   {/* Row 2: status pill + source + job link */}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                     <Select value={current.status} onValueChange={(v) => handleStatusChange(v as AppStatus)} disabled={updating}>
-                      <SelectTrigger style={{
-                        height: 26, fontSize: 11.5, fontWeight: 600,
-                        border: "1px solid #E5E7EB", borderRadius: 20,
-                        padding: "0 10px", background: "#F0FDF4", color: "#005F4B",
-                        width: "auto", minWidth: 100,
-                        display: "flex", alignItems: "center", gap: 4,
-                      }}>
-                        <SelectValue><StatusBadge status={current.status} size="sm" /></SelectValue>
+                      <SelectTrigger
+                        style={{
+                          height: 26,
+                          fontSize: "11.5px",
+                          fontWeight: 600,
+                          borderRadius: 20,
+                          padding: "0 8px 0 12px",
+                          background: STATUS_STYLE[current.status].bg,
+                          color: STATUS_STYLE[current.status].color,
+                          borderColor: STATUS_STYLE[current.status].border,
+                          width: "auto",
+                          minWidth: 100,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          cursor: "pointer",
+                        }}
+                      >
+                        <SelectValue>{STATUS_LABELS[current.status]}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        {ALL_STATUSES.map((s) => (
-                          <SelectItem key={s} value={s} className="text-[13px]">
-                            <StatusBadge status={s} size="sm" />
-                          </SelectItem>
-                        ))}
+                        {ALL_STATUSES.map((s) => {
+                          const itemStyle = STATUS_STYLE[s];
+                          return (
+                            <SelectItem key={s} value={s} className="text-[13px]">
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <span
+                                  style={{
+                                    width: "8px",
+                                    height: "8px",
+                                    borderRadius: "50%",
+                                    backgroundColor: itemStyle.color,
+                                    display: "inline-block",
+                                    flexShrink: 0,
+                                  }}
+                                />
+                                <span style={{ color: "#374151", fontWeight: 500 }}>{STATUS_LABELS[s]}</span>
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
 
