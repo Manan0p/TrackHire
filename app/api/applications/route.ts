@@ -49,6 +49,7 @@ export async function GET(req: NextRequest) {
           take: 1,
         },
         emails: { orderBy: { lastMessageAt: "desc" }, take: 1 },
+        statusHistory: { orderBy: { changedAt: "asc" } },
         _count: { select: { events: true, emails: true } },
       },
     }),
