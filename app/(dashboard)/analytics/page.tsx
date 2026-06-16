@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, CartesianGrid } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SOURCE_LABELS, SOURCE_COLORS } from "@/types";
+import { SOURCE_LABELS, SOURCE_COLORS, STATUS_LABELS } from "@/types";
 import { format, subWeeks, startOfWeek } from "date-fns";
 import { toast } from "sonner";
 import type { ApplicationWithRelations } from "@/types";
@@ -11,10 +11,8 @@ import { AppStatus, Source } from "@prisma/client";
 import { Briefcase, MessageSquare, Trophy, Timer } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 
-const FUNNEL_STATUSES: AppStatus[] = ["APPLIED", "OA", "PHONE", "TECHNICAL", "FINAL", "OFFER"];
-const FUNNEL_LABELS: Record<string, string> = {
-  APPLIED: "Applied", OA: "OA", PHONE: "Phone", TECHNICAL: "Technical", FINAL: "Final", OFFER: "Offer",
-};
+const FUNNEL_STATUSES: AppStatus[] = ["APPLIED", "OA", "PHONE", "TECHNICAL", "OFFER"];
+
 
 const STAT_ICONS = [
   { icon: Briefcase, bg: "#EFF6FF", color: "#2563EB" },
@@ -49,20 +47,53 @@ export default function AnalyticsPage() {
   const offerRate = active.length > 0
     ? Math.round((active.filter((a) => a.status === "OFFER").length / active.length) * 100) : 0;
 
+  // Calculate Avg. Response Time (in days) from status history
+  let totalResponseTimeMs = 0;
+  let respondedAppsCount = 0;
+
+  applications.forEach((a) => {
+    const history = [...(a.statusHistory || [])].sort(
+      (x, y) => new Date(x.changedAt).getTime() - new Date(y.changedAt).getTime()
+    );
+    const firstResponse = history.find((h) =>
+      !["WISHLIST", "APPLIED"].includes(h.toStatus)
+    );
+
+    if (firstResponse) {
+      const startTime = new Date(a.appliedAt || a.createdAt).getTime();
+      const endTime = new Date(firstResponse.changedAt).getTime();
+      const diffMs = endTime - startTime;
+      if (diffMs > 0) {
+        totalResponseTimeMs += diffMs;
+        respondedAppsCount++;
+      }
+    }
+  });
+
+  const avgResponseTimeDays = respondedAppsCount > 0
+    ? Math.round(totalResponseTimeMs / (1000 * 60 * 60 * 24) / respondedAppsCount)
+    : 0;
+
   const statCards = [
     { label: "Total Applications", value: applications.length, suffix: "" },
     { label: "Interview Rate", value: interviewRate, suffix: "%" },
     { label: "Offer Rate", value: offerRate, suffix: "%" },
-    { label: "Avg. Response Time", value: 12, suffix: "d" },
+    { label: "Avg. Response Time", value: avgResponseTimeDays || "—", suffix: avgResponseTimeDays ? "d" : "" },
   ];
 
   // Funnel — count of apps at each stage or beyond
-  const funnelData = FUNNEL_STATUSES.map((status, i) => ({
-    status,
-    label: FUNNEL_LABELS[status],
-    count: applications.filter((a) =>
+  const rawFunnelData = FUNNEL_STATUSES.map((status, i) => {
+    const count = applications.filter((a) =>
       FUNNEL_STATUSES.slice(i).includes(a.status)
-    ).length,
+    ).length;
+    return { status, label: STATUS_LABELS[status], count };
+  });
+
+  const totalFunnelApps = rawFunnelData[0]?.count || 0;
+
+  const funnelData = rawFunnelData.map((item) => ({
+    ...item,
+    rate: totalFunnelApps > 0 ? Math.round((item.count / totalFunnelApps) * 100) : 0,
   }));
 
   // Source pie
@@ -76,13 +107,28 @@ export default function AnalyticsPage() {
     fill: SOURCE_COLORS[source as Source] || "#9CA3AF",
   }));
 
-  // Offer conversion by source (mock realistic data for UI)
-  const offerBySource = [
-    { name: "LinkedIn", rate: 8 },
-    { name: "Referral", rate: 34 },
-    { name: "Direct", rate: 15 },
-    { name: "Other", rate: 5 },
-  ];
+  // Response rate by source dynamically from user's data (only for sources with at least one application)
+  const responseBySource = Object.entries(SOURCE_LABELS)
+    .map(([sourceKey, label]) => {
+      const appsForSource = applications.filter((a) => a.source === sourceKey);
+      const totalCount = appsForSource.length;
+      
+      const respondedCount = appsForSource.filter((a) => {
+        // Check current status
+        const currentResponded = ["OA", "PHONE", "TECHNICAL", "FINAL", "OFFER"].includes(a.status);
+        if (currentResponded) return true;
+        
+        // Check status history
+        const hasRespondedHistory = (a.statusHistory || []).some((h) =>
+          ["OA", "PHONE", "TECHNICAL", "FINAL", "OFFER"].includes(h.toStatus)
+        );
+        return hasRespondedHistory;
+      }).length;
+
+      const rate = totalCount > 0 ? Math.round((respondedCount / totalCount) * 100) : 0;
+      return { name: label, rate, totalCount };
+    })
+    .filter((item) => item.totalCount > 0);
 
   // Monthly area chart (last 3 months)
   const monthlyData = Array.from({ length: 12 }, (_, i) => {
@@ -168,8 +214,6 @@ export default function AnalyticsPage() {
               <h3 style={{ fontSize: 13, fontWeight: 700, color: "#6B7280", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 16 }}>Application Funnel</h3>
               <div style={{ display: "flex", alignItems: "stretch", gap: 0, overflowX: "auto" }}>
                 {funnelData.map((item, i) => {
-                  const prevCount = i > 0 ? funnelData[i - 1].count : null;
-                  const dropPct = prevCount && prevCount > 0 ? Math.round(((prevCount - item.count) / prevCount) * 100) : null;
                   const isLast = i === funnelData.length - 1;
                   return (
                     <div key={item.status} style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 90 }}>
@@ -189,9 +233,9 @@ export default function AnalyticsPage() {
                       }}>
                         <p style={{ fontSize: 11, fontWeight: 600, color: isLast ? "rgba(255,255,255,0.75)" : "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.04em" }}>{item.label}</p>
                         <p style={{ fontSize: 22, fontWeight: 700, color: isLast ? "#fff" : "#111827", lineHeight: 1.1 }}>{item.count}</p>
-                        {dropPct !== null && (
-                          <p style={{ fontSize: 10.5, color: isLast ? "rgba(255,255,255,0.6)" : "#EF4444", fontWeight: 500 }}>▼ {dropPct}% drop</p>
-                        )}
+                        <p style={{ fontSize: 10.5, color: isLast ? "rgba(255,255,255,0.6)" : "#6B7280", fontWeight: 500 }}>
+                          {item.rate}% conversion
+                        </p>
                       </div>
                       {!isLast && (
                         <div style={{ color: "#D1D5DB", fontSize: 18, padding: "0 4px", flexShrink: 0 }}>›</div>
@@ -232,18 +276,22 @@ export default function AnalyticsPage() {
                 )}
               </div>
 
-              {/* Bar - Offer Conversion by Source */}
+              {/* Bar - Response Rate by Source */}
               <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 24px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-                <h3 style={{ fontSize: 13, fontWeight: 700, color: "#6B7280", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 16 }}>Offer Conversion by Source</h3>
-                <ResponsiveContainer width="100%" height={160}>
-                  <BarChart data={offerBySource} barSize={28} margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} unit="%" />
-                    <Tooltip formatter={(v: any) => [`${v}%`, "Offer Rate"]} cursor={{ fill: "#F9FAFB" }} />
-                    <Bar dataKey="rate" fill="#005F4B" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <h3 style={{ fontSize: 13, fontWeight: 700, color: "#6B7280", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 16 }}>Response Rate by Source</h3>
+                {responseBySource.length === 0 ? (
+                  <div style={{ height: 160, display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", fontSize: 13 }}>No data yet</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={160}>
+                    <BarChart data={responseBySource} barSize={28} margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} unit="%" domain={[0, 100]} />
+                      <Tooltip formatter={(v: any) => [`${v}%`, "Response Rate"]} cursor={{ fill: "#F9FAFB" }} />
+                      <Bar dataKey="rate" fill="#005F4B" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </div>
 

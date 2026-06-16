@@ -905,107 +905,113 @@ export default function ProfilePage() {
       <TopBar title="Profile" subtitle="Account" showGmailSync={false} showAddApplication={false} />
 
       <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px" }}>
-        <div style={{ maxWidth: 760, display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 16 }}>
 
-          {/* ── Identity Card ──────────────────────────────────────────── */}
-          <SectionCard>
-            <SectionHeader icon={User} title="Personal Info" />
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "stretch" }}>
+            {/* ── Identity Card ──────────────────────────────────────────── */}
+            <SectionCard style={{ flex: "1 1 340px", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                <SectionHeader icon={User} title="Personal Info" />
 
-            {/* Avatar + name hero */}
-            <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-              <div style={{
-                width: 72, height: 72, borderRadius: "50%", flexShrink: 0,
-                background: profile?.image ? "transparent" : "linear-gradient(135deg, #005F4B, #0EA5E9)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                overflow: "hidden", border: "3px solid #E5E7EB",
-                boxShadow: "0 4px 12px rgba(0,95,75,0.2)",
-              }}>
-                {profile?.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={profile.image} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  <span style={{ fontSize: 24, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>{initials}</span>
-                )}
+                {/* Avatar + name hero */}
+                <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+                  <div style={{
+                    width: 72, height: 72, borderRadius: "50%", flexShrink: 0,
+                    background: profile?.image ? "transparent" : "linear-gradient(135deg, #005F4B, #0EA5E9)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    overflow: "hidden", border: "3px solid #E5E7EB",
+                    boxShadow: "0 4px 12px rgba(0,95,75,0.2)",
+                  }}>
+                    {profile?.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={profile.image} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <span style={{ fontSize: 24, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>{initials}</span>
+                    )}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 20, fontWeight: 700, color: "#111827", margin: 0, lineHeight: 1.2 }}>
+                      {profile?.name || "Your Name"}
+                    </p>
+                    <p style={{ fontSize: 13, color: "#6B7280", margin: "2px 0 0" }}>
+                      {profile?.email}
+                    </p>
+                    {headline && (
+                      <p style={{ fontSize: 12.5, color: "#005F4B", margin: "4px 0 0", fontWeight: 500 }}>
+                        {headline}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <div>
+                    <FieldLabel>Display Name</FieldLabel>
+                    <StyledInput value={name} onChange={setName} placeholder="Your full name" />
+                  </div>
+                  <div>
+                    <FieldLabel>Headline</FieldLabel>
+                    <StyledInput value={headline} onChange={setHeadline} placeholder="Full-Stack Engineer @ Google" />
+                    <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4, marginBottom: 0 }}>Shown on your profile card</p>
+                  </div>
+                </div>
               </div>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontSize: 20, fontWeight: 700, color: "#111827", margin: 0, lineHeight: 1.2 }}>
-                  {profile?.name || "Your Name"}
+
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>
+                <TealButton onClick={handleSaveProfile} loading={saving}>
+                  <CheckCircle2 size={14} />
+                  {saving ? "Saving…" : "Save Info"}
+                </TealButton>
+              </div>
+            </SectionCard>
+
+            {/* ── Links Card ────────────────────────────────────────────── */}
+            <SectionCard style={{ flex: "1 1 340px", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                <SectionHeader icon={Globe} title="Links" />
+                <p style={{ fontSize: 13, color: "#6B7280", margin: 0, lineHeight: 1.5 }}>
+                  Add your professional links. These help recruiters find you and are accessible from your applications.
                 </p>
-                <p style={{ fontSize: 13, color: "#6B7280", margin: "2px 0 0" }}>
-                  {profile?.email}
-                </p>
-                {headline && (
-                  <p style={{ fontSize: 12.5, color: "#005F4B", margin: "4px 0 0", fontWeight: 500 }}>
-                    {headline}
-                  </p>
-                )}
-              </div>
-            </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              <div>
-                <FieldLabel>Display Name</FieldLabel>
-                <StyledInput value={name} onChange={setName} placeholder="Your full name" />
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <div>
+                    <FieldLabel>LinkedIn</FieldLabel>
+                    <StyledInput
+                      value={linkedinUrl}
+                      onChange={setLinkedinUrl}
+                      placeholder="https://linkedin.com/in/username"
+                      icon={ExternalLink}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>GitHub</FieldLabel>
+                    <StyledInput
+                      value={githubUrl}
+                      onChange={setGithubUrl}
+                      placeholder="https://github.com/username"
+                      icon={GitBranch}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Portfolio / Website</FieldLabel>
+                    <StyledInput
+                      value={portfolioUrl}
+                      onChange={setPortfolioUrl}
+                      placeholder="https://yourname.dev"
+                      icon={Globe}
+                    />
+                  </div>
+                </div>
               </div>
-              <div>
-                <FieldLabel>Headline</FieldLabel>
-                <StyledInput value={headline} onChange={setHeadline} placeholder="Full-Stack Engineer @ Google" />
-                <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4, marginBottom: 0 }}>Shown on your profile card</p>
-              </div>
-            </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <TealButton onClick={handleSaveProfile} loading={saving}>
-                <CheckCircle2 size={14} />
-                {saving ? "Saving…" : "Save Info"}
-              </TealButton>
-            </div>
-          </SectionCard>
-
-          {/* ── Links Card ────────────────────────────────────────────── */}
-          <SectionCard>
-            <SectionHeader icon={Globe} title="Links" />
-            <p style={{ fontSize: 13, color: "#6B7280", margin: 0, lineHeight: 1.5 }}>
-              Add your professional links. These help recruiters find you and are accessible from your applications.
-            </p>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div>
-                <FieldLabel>LinkedIn</FieldLabel>
-                <StyledInput
-                  value={linkedinUrl}
-                  onChange={setLinkedinUrl}
-                  placeholder="https://linkedin.com/in/username"
-                  icon={ExternalLink}
-                />
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>
+                <TealButton onClick={handleSaveProfile} loading={saving}>
+                  <CheckCircle2 size={14} />
+                  {saving ? "Saving…" : "Save Links"}
+                </TealButton>
               </div>
-              <div>
-                <FieldLabel>GitHub</FieldLabel>
-                <StyledInput
-                  value={githubUrl}
-                  onChange={setGithubUrl}
-                  placeholder="https://github.com/username"
-                  icon={GitBranch}
-                />
-              </div>
-              <div>
-                <FieldLabel>Portfolio / Website</FieldLabel>
-                <StyledInput
-                  value={portfolioUrl}
-                  onChange={setPortfolioUrl}
-                  placeholder="https://yourname.dev"
-                  icon={Globe}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <TealButton onClick={handleSaveProfile} loading={saving}>
-                <CheckCircle2 size={14} />
-                {saving ? "Saving…" : "Save Links"}
-              </TealButton>
-            </div>
-          </SectionCard>
+            </SectionCard>
+          </div>
 
           {/* ── Resume Builder Card ───────────────────────────────────── */}
           <SectionCard>
