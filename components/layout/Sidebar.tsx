@@ -10,6 +10,7 @@ import {
   Settings,
   Plus,
   User,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,7 @@ const navItems = [
   { href: "/list", label: "List", icon: List },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/inbox", label: "Inbox", icon: Mail },
   { href: "/profile", label: "Profile", icon: User },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

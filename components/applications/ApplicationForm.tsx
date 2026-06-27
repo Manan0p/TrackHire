@@ -12,6 +12,8 @@ const STATUSES: AppStatus[] = ["WISHLIST", "APPLIED", "OA", "PHONE", "TECHNICAL"
 
 interface ApplicationFormProps {
   defaultStatus?: AppStatus;
+  defaultCompany?: string;
+  defaultRole?: string;
   onSuccess: (app: ApplicationWithRelations) => void;
   onCancel: () => void;
 }
@@ -93,10 +95,10 @@ function StyledSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   );
 }
 
-export function ApplicationForm({ defaultStatus = "APPLIED", onSuccess, onCancel }: ApplicationFormProps) {
+export function ApplicationForm({ defaultStatus = "APPLIED", defaultCompany = "", defaultRole = "", onSuccess, onCancel }: ApplicationFormProps) {
   const [loading, setLoading] = useState(false);
-  const [company, setCompany] = useState("");
-  const [role, setRole] = useState("");
+  const [company, setCompany] = useState(defaultCompany);
+  const [role, setRole] = useState(defaultRole);
   const [source, setSource] = useState<Source>("LINKEDIN");
   const [status, setStatus] = useState<AppStatus>(defaultStatus);
   const [jobUrl, setJobUrl] = useState("");

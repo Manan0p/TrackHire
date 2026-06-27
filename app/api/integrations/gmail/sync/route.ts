@@ -89,17 +89,27 @@ export async function POST(req: NextRequest) {
 
   const detected: DetectedApplication[] = [];
   const errors: string[] = [];
+  const userEmail = session.user.email?.toLowerCase();
 
   for (const thread of threads) {
     try {
       const firstMsg = thread.messages[0];
-      const lastMsg = thread.messages[thread.messages.length - 1];
       if (!firstMsg) continue;
 
+      // Find the latest message in the thread not sent by the logged-in user
+      let targetMsg = thread.messages[thread.messages.length - 1];
+      for (let i = thread.messages.length - 1; i >= 0; i--) {
+        const msgFrom = getHeader(thread.messages[i], "From").toLowerCase();
+        if (userEmail && !msgFrom.includes(userEmail)) {
+          targetMsg = thread.messages[i];
+          break;
+        }
+      }
+
       const subject = getHeader(firstMsg, "Subject");
-      const from = getHeader(firstMsg, "From");
-      const date = getHeader(lastMsg, "Date");
-      const snippet = lastMsg.snippet ?? "";
+      const from = getHeader(targetMsg, "From");
+      const date = getHeader(targetMsg, "Date");
+      const snippet = targetMsg.snippet ?? "";
 
       // Extract email address from "Name <email>" format
       const fromEmailMatch = from.match(/<([^>]+)>/);

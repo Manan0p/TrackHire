@@ -18,12 +18,16 @@ import type { ApplicationWithRelations } from "@/types";
 export function GlobalDialogs() {
   const [open, setOpen] = useState(false);
   const [defaultStatus, setDefaultStatus] = useState<AppStatus>("APPLIED");
+  const [defaultCompany, setDefaultCompany] = useState("");
+  const [defaultRole, setDefaultRole] = useState("");
   const pathname = usePathname();
 
   useEffect(() => {
     const handleOpen = (e: Event) => {
-      const status = (e as CustomEvent<{ status?: AppStatus }>).detail?.status ?? "APPLIED";
-      setDefaultStatus(status);
+      const detail = (e as CustomEvent<{ status?: AppStatus; company?: string; role?: string }>).detail;
+      setDefaultStatus(detail?.status ?? "APPLIED");
+      setDefaultCompany(detail?.company ?? "");
+      setDefaultRole(detail?.role ?? "");
       setOpen(true);
     };
 
@@ -59,6 +63,8 @@ export function GlobalDialogs() {
         </DialogHeader>
         <ApplicationForm
           defaultStatus={defaultStatus}
+          defaultCompany={defaultCompany}
+          defaultRole={defaultRole}
           onSuccess={handleSuccess}
           onCancel={() => setOpen(false)}
         />

@@ -5,7 +5,7 @@
 
 // ─── Rate limiting ────────────────────────────────────────────────────────────
 
-const GMAIL_SYNC_COOLDOWN = 15 * 60 * 1000; // 15 minutes
+const GMAIL_SYNC_COOLDOWN = 10 * 1000; // 10 seconds cooldown for testing
 const lastSyncTimes = new Map<string, number>();
 
 export function canSyncGmail(userId: string): boolean {
@@ -26,7 +26,7 @@ export function getNextSyncAllowedAt(userId: string): Date | null {
 
 // ─── Gmail search query ───────────────────────────────────────────────────────
 
-export const GMAIL_JOB_QUERY = `from:(linkedin OR wellfound OR greenhouse.io OR lever.co OR workday OR ashbyhq OR smartrecruiters OR naukri OR internshala OR jobs-listings OR recruiting OR careers OR talent) subject:(application OR interview OR assessment OR offer OR "next steps" OR "following up" OR decision OR shortlisted OR selected OR rejected) newer_than:90d`;
+export const GMAIL_JOB_QUERY = `(subject:(application OR interview OR assessment OR offer OR "next steps" OR decision OR shortlisted OR selected OR rejected OR "thanks for applying" OR "applied to") OR "application received" OR "interview invite" OR "online assessment" OR "job offer") -subject:("job alert" OR "jobs matching" OR "new jobs" OR "weekly digest" OR "weekly update" OR "your search") newer_than:90d`;
 
 // ─── Calendar helpers ─────────────────────────────────────────────────────────
 

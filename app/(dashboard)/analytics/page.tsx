@@ -81,20 +81,11 @@ export default function AnalyticsPage() {
     { label: "Avg. Response Time", value: avgResponseTimeDays || "—", suffix: avgResponseTimeDays ? "d" : "" },
   ];
 
-  // Funnel — count of apps at each stage or beyond
-  const rawFunnelData = FUNNEL_STATUSES.map((status, i) => {
-    const count = applications.filter((a) =>
-      FUNNEL_STATUSES.slice(i).includes(a.status)
-    ).length;
-    return { status, label: STATUS_LABELS[status], count };
+  // Active Pipeline — count of apps currently in each stage
+  const activePipelineData = FUNNEL_STATUSES.map((status) => {
+    const count = applications.filter((a) => a.status === status).length;
+    return { name: STATUS_LABELS[status], count };
   });
-
-  const totalFunnelApps = rawFunnelData[0]?.count || 0;
-
-  const funnelData = rawFunnelData.map((item) => ({
-    ...item,
-    rate: totalFunnelApps > 0 ? Math.round((item.count / totalFunnelApps) * 100) : 0,
-  }));
 
   // Source pie
   const sourceMap = applications.reduce((acc, a) => {
@@ -209,41 +200,22 @@ export default function AnalyticsPage() {
               })}
             </div>
 
-            {/* ── Application Funnel ── */}
+            {/* ── Active Pipeline ── */}
             <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 24px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-              <h3 style={{ fontSize: 13, fontWeight: 700, color: "#6B7280", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 16 }}>Application Funnel</h3>
-              <div style={{ display: "flex", alignItems: "stretch", gap: 0, overflowX: "auto" }}>
-                {funnelData.map((item, i) => {
-                  const isLast = i === funnelData.length - 1;
-                  return (
-                    <div key={item.status} style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 90 }}>
-                      <div style={{
-                        flex: 1,
-                        background: isLast ? "#005F4B" : "#F9FAFB",
-                        border: `1px solid ${isLast ? "#005F4B" : "#E5E7EB"}`,
-                        borderRadius: 8,
-                        padding: "14px 12px",
-                        textAlign: "center",
-                        minHeight: 90,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 4,
-                      }}>
-                        <p style={{ fontSize: 11, fontWeight: 600, color: isLast ? "rgba(255,255,255,0.75)" : "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.04em" }}>{item.label}</p>
-                        <p style={{ fontSize: 22, fontWeight: 700, color: isLast ? "#fff" : "#111827", lineHeight: 1.1 }}>{item.count}</p>
-                        <p style={{ fontSize: 10.5, color: isLast ? "rgba(255,255,255,0.6)" : "#6B7280", fontWeight: 500 }}>
-                          {item.rate}% conversion
-                        </p>
-                      </div>
-                      {!isLast && (
-                        <div style={{ color: "#D1D5DB", fontSize: 18, padding: "0 4px", flexShrink: 0 }}>›</div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+              <h3 style={{ fontSize: 13, fontWeight: 700, color: "#6B7280", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 16 }}>Active Pipeline</h3>
+              {activePipelineData.every((item) => item.count === 0) ? (
+                <div style={{ height: 160, display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", fontSize: 13 }}>No active applications</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={activePipelineData} barSize={40} margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip formatter={(v: any) => [v, "Applications"]} cursor={{ fill: "#F9FAFB" }} />
+                    <Bar dataKey="count" fill="#005F4B" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
 
             {/* ── Two charts side by side ── */}
