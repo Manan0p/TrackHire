@@ -57,6 +57,7 @@ model User {
   resumeData      Json?
   coverLetter     String?
   gmailConnected  Boolean       @default(false)
+  apiKey          String?       @unique
   calendarId      String?
   createdAt       DateTime      @default(now())
   applications    Application[]

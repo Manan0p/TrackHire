@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import {
   User, Mail, Download, Trash2,
-  Loader2, CheckCircle2, RefreshCw, Calendar, AlertCircle,
+  Loader2, CheckCircle2, RefreshCw, Calendar, AlertCircle, Key
 } from "lucide-react";
 import { toast } from "sonner";
 import { getInitials, formatRelative } from "@/lib/utils";
@@ -20,6 +20,7 @@ interface UserProfile {
   gmailConnected: boolean;
   calendarId: string | null;
   gmailLastSyncedAt?: string | null;
+  apiKey?: string | null;
 }
 
 // ─── Reusable styled primitives ───────────────────────────────────────────────
@@ -165,6 +166,8 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [generatingKey, setGeneratingKey] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const [name, setName] = useState("");
 
   useEffect(() => {
@@ -177,6 +180,21 @@ export default function SettingsPage() {
       .catch(() => toast.error("Failed to load profile"))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleGenerateKey = async () => {
+    setGeneratingKey(true);
+    try {
+      const res = await fetch("/api/user/apikey", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error();
+      setProfile((p) => p ? { ...p, apiKey: data.apiKey } : p);
+      toast.success("New API Key generated!");
+    } catch {
+      toast.error("Failed to generate API Key");
+    } finally {
+      setGeneratingKey(false);
+    }
+  };
 
   const handleSaveProfile = async () => {
     setSaving(true);
@@ -284,30 +302,6 @@ export default function SettingsPage() {
             
             {/* Left Column - Profile & Info */}
             <div style={{ flex: "1 1 340px", display: "flex", flexDirection: "column", gap: 16 }}>
-              {/* ── Profile moved notice ──────────────────────────────────────── */}
-              <a
-                href="/profile"
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "14px 18px", borderRadius: 10,
-                  background: "linear-gradient(135deg, #F0F9F6, #EFF6FF)",
-                  border: "1px solid #A7F3D0", textDecoration: "none",
-                  transition: "box-shadow 0.15s",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,95,75,0.12)")}
-                onMouseLeave={(e) => (e.currentTarget.style.boxShadow = "none")}
-              >
-                <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "#005F4B", margin: 0 }}>
-                    ✦ Profile &amp; Resume Builder
-                  </p>
-                  <p style={{ fontSize: 12, color: "#6B7280", margin: "2px 0 0" }}>
-                    Manage your LinkedIn, GitHub, portfolio links, and build your resume with the structured editor
-                  </p>
-                </div>
-                <span style={{ fontSize: 18, color: "#005F4B", flexShrink: 0 }}>→</span>
-              </a>
-
               {/* ── Profile Card ─────────────────────────────────────────────── */}
               <SectionCard>
                 <SectionHeader icon={User} title="Profile" />
@@ -317,13 +311,13 @@ export default function SettingsPage() {
                   {/* Avatar circle */}
                   <div style={{
                     width: 52, height: 52, borderRadius: "50%", flexShrink: 0,
-                    background: profile?.image ? "transparent" : "#005F4B",
+                    background: profile?.image && !imageError ? "transparent" : "#005F4B",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     overflow: "hidden", border: "2px solid #E5E7EB",
                   }}>
-                    {profile?.image ? (
+                    {profile?.image && !imageError ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={profile.image} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <img src={profile.image} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={() => setImageError(true)} />
                     ) : (
                       <span style={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>{initials}</span>
                     )}
@@ -353,6 +347,44 @@ export default function SettingsPage() {
                   <TealButton onClick={handleSaveProfile} loading={saving}>
                     {saving ? "Saving…" : "Save Profile"}
                   </TealButton>
+                </div>
+              </SectionCard>
+
+              {/* ── Data Card ─────────────────────────────────────────────────── */}
+              <SectionCard>
+                <SectionHeader icon={Download} title="Data" />
+
+                {/* Export row */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                  <div>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: "#111827", margin: 0 }}>Export All Data</p>
+                    <p style={{ fontSize: 13, color: "#6B7280", margin: "2px 0 0" }}>
+                      Download all your applications as a JSON file
+                    </p>
+                  </div>
+                  <OutlineButton onClick={handleExportData}>
+                    <Download size={13} />
+                    Export
+                  </OutlineButton>
+                </div>
+
+                <Divider />
+
+                {/* Delete Account row */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                  <div>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: "#DC2626", margin: 0 }}>Delete Account</p>
+                    <p style={{ fontSize: 13, color: "#6B7280", margin: "2px 0 0" }}>
+                      Permanently delete your account and all associated data
+                    </p>
+                  </div>
+                  <OutlineButton
+                    onClick={() => toast.error("Account deletion requires email confirmation — contact support")}
+                    danger
+                  >
+                    <Trash2 size={13} />
+                    Delete
+                  </OutlineButton>
                 </div>
               </SectionCard>
             </div>
@@ -437,41 +469,52 @@ export default function SettingsPage() {
                 </div>
               </SectionCard>
 
-              {/* ── Data Card ─────────────────────────────────────────────────── */}
+              {/* ── Developer Card ─────────────────────────────────────────────────── */}
               <SectionCard>
-                <SectionHeader icon={Download} title="Data" />
+                <SectionHeader icon={Key} title="Developer / API" />
 
-                {/* Export row */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   <div>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: "#111827", margin: 0 }}>Export All Data</p>
-                    <p style={{ fontSize: 13, color: "#6B7280", margin: "2px 0 0" }}>
-                      Download all your applications as a JSON file
+                    <p style={{ fontSize: 14, fontWeight: 600, color: "#111827", margin: 0 }}>API Key</p>
+                    <p style={{ fontSize: 13, color: "#6B7280", margin: "2px 0 12px" }}>
+                      Use this key to authenticate with the TrackHire Chrome Extension or custom API integrations.
                     </p>
+                    
+                    {profile?.apiKey ? (
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <div style={{ 
+                          flex: 1, 
+                          padding: "10px 14px", 
+                          background: "#F9FAFB", 
+                          border: "1px solid #E5E7EB", 
+                          borderRadius: 8,
+                          fontSize: 13,
+                          fontFamily: "monospace",
+                          color: "#374151",
+                          overflowX: "auto"
+                        }}>
+                          {profile.apiKey}
+                        </div>
+                        <OutlineButton onClick={() => {
+                          navigator.clipboard.writeText(profile.apiKey || "");
+                          toast.success("Copied to clipboard!");
+                        }}>
+                          Copy
+                        </OutlineButton>
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: 13, color: "#9CA3AF", fontStyle: "italic", margin: 0 }}>
+                        No API Key generated yet.
+                      </p>
+                    )}
                   </div>
-                  <OutlineButton onClick={handleExportData}>
-                    <Download size={13} />
-                    Export
-                  </OutlineButton>
-                </div>
 
-                <Divider />
-
-                {/* Delete Account row */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-                  <div>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: "#DC2626", margin: 0 }}>Delete Account</p>
-                    <p style={{ fontSize: 13, color: "#6B7280", margin: "2px 0 0" }}>
-                      Permanently delete your account and all associated data
-                    </p>
+                  <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+                    <OutlineButton onClick={handleGenerateKey} loading={generatingKey}>
+                      {generatingKey ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> : <RefreshCw size={13} />}
+                      {profile?.apiKey ? "Regenerate Key" : "Generate API Key"}
+                    </OutlineButton>
                   </div>
-                  <OutlineButton
-                    onClick={() => toast.error("Account deletion requires email confirmation — contact support")}
-                    danger
-                  >
-                    <Trash2 size={13} />
-                    Delete
-                  </OutlineButton>
                 </div>
               </SectionCard>
             </div>

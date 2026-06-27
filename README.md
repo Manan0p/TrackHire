@@ -22,6 +22,9 @@ Interactive resume manager holding professional summaries, dynamic skill parsing
 **AI Career Assistant Pane**
 Real-time analysis drawer providing instant match scores, missing skill alerts, tailored behavioral/technical interview prep questions, and custom follow-up email drafts.
 
+**Chrome Extension Web Clipper**
+1-click job tracking extension that scrapes LinkedIn job postings and automatically syncs the application directly into your TrackHire pipeline via a custom developer API.
+
 ---
 
 ## 🎯 What This Project Does
@@ -45,6 +48,9 @@ It helps job seekers to:
 - 📝 **Structured Resume Builder** - Clean forms to build a professional profile, with comma-separated live skill chip parsing, experience bulletins, and project highlight inputs.
 - 📅 **Google Calendar Integration** - Schedule interviews, OAs, or follow-ups with automatic calendar event generation.
 - 📧 **Gmail Smart Detection** - Scan linked mailboxes to auto-resolve application receipts, interview requests, and status changes.
+- 📥 **Dedicated Job Inbox** - A specialized UI filtering job-related emails explicitly for manual triaging and one-click application creation without AI drops.
+- 🧩 **Chrome Web Clipper** - A dedicated Chrome extension providing 1-click tracking from LinkedIn jobs directly into your dashboard.
+- 🔑 **Developer API Keys** - Generate secure API keys to integrate custom workflows and authenticate external browser extensions.
 - 🤖 **Tailored Interview Prep** - Dynamically generates behavioral, technical, and company-specific questions matching the job description.
 - ✉️ **Contextual Email Drafter** - Instantly drafts follow-up emails for recruiters based on the latest application updates.
 
@@ -93,6 +99,7 @@ trackhire/
 │   ├── (dashboard)/          # Dashboard views (board, list, profile, settings, analytics)
 │   ├── page.tsx              # Landing page
 │   └── layout.tsx            # Global layout wrapper
+├── chrome-extension/         # Chrome Extension Web Clipper for 1-click LinkedIn tracking
 ├── components/               # Reusable UI pieces (board, applications, ai, layout, ui)
 ├── lib/                      # Core helpers (auth, prisma, resume-compiler, ai)
 ├── prisma/                   # Schema definitions and database push logs
@@ -154,7 +161,7 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 ## 💾 Database Schema Overview
 
 TrackHire utilizes a relational schema mapping users, applications, and calendar schedules:
-- `User` - User profile storing OAuth fields, default cover letter template, and structured resume JSON (`resumeData`).
+- `User` - User profile storing OAuth fields, default cover letter template, structured resume JSON (`resumeData`), and developer `apiKey`.
 - `Application` - Job tracking data (company, role, source, status, matchScore, appliedAt, notes).
 - `Event` - Dynamic calendar logs linked to applications (interview types, scheduled date/time, notes, completion).
 - `StatusHistory` - Auto-created log tracking application status transitions for analytics.

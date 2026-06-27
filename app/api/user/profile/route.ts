@@ -24,6 +24,7 @@ export async function GET() {
       coverLetter: true,
       gmailConnected: true,
       calendarId: true,
+      apiKey: true,
     },
   });
 

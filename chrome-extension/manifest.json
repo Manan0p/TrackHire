@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "TrackHire Web Clipper",
+  "version": "1.0",
+  "description": "1-Click application tracking from LinkedIn and other job boards directly into TrackHire.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "*://*.linkedin.com/*",
+    "http://localhost:3000/*",
+    "https://*.vercel.app/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "TrackHire settings"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://www.linkedin.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
